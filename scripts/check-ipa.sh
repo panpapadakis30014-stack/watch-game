@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Checks an unsigned Ringward .ipa before it is uploaded: the watch app is
 # embedded where the phone expects it, it has an arm64_32 slice, it targets
-# watchOS 10.0, bundle IDs / WK keys / versions are right, and nothing carries
-# entitlements. Runs on macOS (needs lipo and PlistBuddy).
+# watchOS 10.0, bundle IDs / WK keys / versions are right, nothing carries
+# entitlements, and both apps have the AppIcon. Runs on macOS (needs lipo,
+# PlistBuddy, assetutil and jq).
 set -euo pipefail
 
 IPA="${1:?usage: check-ipa.sh path/to/Ringward-unsigned.ipa}"
@@ -69,5 +70,29 @@ expect "watch CFBundleVersion" "$(plist_value "$W" CFBundleVersion)" "$IOS_BUILD
 # 5. No entitlements anywhere in the package.
 ENTITLEMENTS="$(find "$T" -name '*.entitlements')"
 [ -z "$ENTITLEMENTS" ] || fail "Unexpected entitlements files: $ENTITLEMENTS"
+
+# 6. App icon: both apps carry a compiled asset catalog with an AppIcon
+# rendition, and both Info.plists name it.
+for CAR in "$T/Payload/Ringward.app/Assets.car" "$T/Payload/Ringward.app/Watch/RingwardWatch.app/Assets.car"; do
+  REL="${CAR#"$T"/}"
+  [ -f "$CAR" ] || fail "Missing $REL"
+  xcrun assetutil --info "$CAR" > "$T/assetinfo.json" || fail "assetutil could not read $REL"
+  if ! jq -e '[.[] | objects | select(.Name? == "AppIcon")] | length > 0' "$T/assetinfo.json" > /dev/null; then
+    NAMES="$(jq -r '[.[] | objects | .Name? // empty] | unique | join(", ")' "$T/assetinfo.json" || true)"
+    fail "No AppIcon rendition in $REL (names found: ${NAMES:-none})"
+  fi
+  echo "$REL has an AppIcon rendition"
+done
+expect "iOS CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" \
+  "$(plist_value "$A" CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName)" "AppIcon"
+WATCH_ICON_TOP="$(plist_value "$W" CFBundleIconName)"
+WATCH_ICON_PRIMARY="$(plist_value "$W" CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName)"
+if [ "$WATCH_ICON_TOP" = "AppIcon" ]; then
+  echo "watch CFBundleIconName = AppIcon (top level)"
+elif [ "$WATCH_ICON_PRIMARY" = "AppIcon" ]; then
+  echo "watch CFBundleIconName = AppIcon (under CFBundleIcons:CFBundlePrimaryIcon)"
+else
+  fail "watch CFBundleIconName is '${WATCH_ICON_TOP}' (top level) / '${WATCH_ICON_PRIMARY}' (CFBundleIcons:CFBundlePrimaryIcon), expected 'AppIcon'"
+fi
 
 echo "check-ipa: OK"
