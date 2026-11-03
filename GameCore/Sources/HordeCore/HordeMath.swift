@@ -31,7 +31,7 @@ public struct Vec2: Equatable {
     public func dot(_ o: Vec2) -> Double { x * o.x + y * o.y }
 }
 
-/// Deterministic trigonometry and swept collisions. No Foundation here, so the
+/// Deterministic trigonometry and swept collisions. Standard library only, so the
 /// results are bit-identical on Linux and on the watch.
 public enum HordeMath {
     /// sin and cos of an angle in degrees, by quadrant reduction plus a Taylor
