@@ -1,10 +1,8 @@
 /// A deterministic mid-game state for screenshots: an auto-aiming player runs
 /// the real simulation from a fixed seed until there is something to show.
-/// With perfect aim, shards only overlap once difficulty is past about half
-/// (roughly a minute in), so the search may run up to 90 s.
 public enum DemoScenario {
     public static let seed: UInt64 = 20_261_103
-    static let maxElapsed: Double = 90
+    static let maxElapsed: Double = 40
 
     public static func midGame() -> Game {
         var g = Game(seed: seed)

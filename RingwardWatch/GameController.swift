@@ -71,7 +71,9 @@ final class GameController {
         }
     }
 
+    /// Frozen demo states never pause, so the screenshot shows the live round.
     func pause() {
+        guard !isFrozen else { return }
         game.pause()
         lastFrameDate = nil
     }

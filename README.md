@@ -39,7 +39,7 @@ cd ~/watch-game/GameCore && swift build && swift test
 
 ## Create the GitHub repo and push
 
-1. On github.com, signed in as `panpapadakis30014-stack`, create a new **public** repository named `watch-game`. Leave it empty: no README, no .gitignore, no licence. Public matters because GitHub's macOS build minutes are free for public repositories.
+1. The public repository `panpapadakis30014-stack/watch-game` already exists (you created it). It is public, which keeps GitHub's macOS build minutes free.
 2. Push this folder to it:
 
    ```sh
@@ -71,8 +71,9 @@ If the screenshot artifact is missing, the run log of the "Simulator screenshots
 1. Copy the .ipa where the VM can fetch it: `cp ~/Downloads/ringward/Ringward-unsigned.ipa ~/VMs/windows-share/`
 2. Start the VM: `~/VMs/start-windows.sh`. It also starts the file server; inside Windows open `http://10.0.2.2:8000` and download `Ringward-unsigned.ipa`.
 3. Hand the iPhone to the VM: `~/VMs/iphone-to-vm.sh`.
-4. In Sideloadly, drag in `Ringward-unsigned.ipa`, sign in with **the same Apple ID** as your other sideloaded apps, and press **Start**.
-5. When finished, give the phone back to Linux: `~/VMs/iphone-to-vm.sh --back`.
+4. On the iPhone, remove **CapCut** first, to free its app slot (see "The 3-app limit").
+5. In Sideloadly, drag in `Ringward-unsigned.ipa`, sign in with **the same Apple ID** as your other sideloaded apps, and press **Start**.
+6. When finished, give the phone back to Linux: `~/VMs/iphone-to-vm.sh --back`.
 
 Whether Sideloadly installs an app with an embedded watch app correctly on a free Apple ID has **not been tested**. See "Known unknowns".
 
@@ -90,7 +91,7 @@ Apps signed with a free Apple ID expire after 7 days. After that Ringward (iPhon
 
 ## The 3-app limit
 
-A free Apple ID allows only **3 active sideloaded apps** at a time, and TikTok, YouTube and CapCut already use all three. To install Ringward, one of them has to be removed first, or a paid Apple Developer account used instead. Whether the embedded watch app counts as an extra app or App ID on a free account is not known.
+A free Apple ID allows only **3 active sideloaded apps** at a time, and TikTok, YouTube and CapCut already use all three. You have chosen to give CapCut's slot to Ringward: **remove CapCut from the iPhone before you press Start in Sideloadly.** Whether the embedded watch app counts as an extra app or App ID on a free account is not known.
 
 ## Known unknowns
 

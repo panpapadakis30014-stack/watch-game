@@ -24,7 +24,7 @@ final class DifficultyTests: XCTestCase {
         let d = Difficulty.at(elapsed: 0, tuning: tuning)
         XCTAssertEqual(d.level, 0)
         XCTAssertEqual(d.shardSpeed, 0.40)
-        XCTAssertEqual(d.spawnInterval, 1.6)
+        XCTAssertEqual(d.spawnInterval, 0.95)
         XCTAssertEqual(d.maxShards, 2)
         XCTAssertEqual(d.maxSpawnAngleJump, 100)
     }
@@ -33,8 +33,8 @@ final class DifficultyTests: XCTestCase {
         for elapsed in [120.0, 200.0] {
             let d = Difficulty.at(elapsed: elapsed, tuning: tuning)
             XCTAssertEqual(d.level, 1)
-            XCTAssertEqual(d.shardSpeed, 0.85)
-            XCTAssertEqual(d.spawnInterval, 0.55)
+            XCTAssertEqual(d.shardSpeed, 0.95)
+            XCTAssertEqual(d.spawnInterval, 0.35)
             XCTAssertEqual(d.maxShards, 6)
             XCTAssertEqual(d.maxSpawnAngleJump, 180)
         }

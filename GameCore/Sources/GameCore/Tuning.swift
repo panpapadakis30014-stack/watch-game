@@ -29,12 +29,12 @@ public struct Tuning: Equatable {
     public var pointsPerPulsedShard: Int = 5
 
     // Spawning / difficulty
-    public var firstSpawnDelay: Double = 1.0
+    public var firstSpawnDelay: Double = 0.6
     public var difficultyRampSeconds: Double = 120.0 // cap reached here
     public var startShardSpeed: Double = 0.40        // spawn-radius units per second
-    public var maxShardSpeed: Double = 0.85
-    public var startSpawnInterval: Double = 1.6
-    public var minSpawnInterval: Double = 0.55
+    public var maxShardSpeed: Double = 0.95
+    public var startSpawnInterval: Double = 0.95
+    public var minSpawnInterval: Double = 0.35
     public var startMaxShards: Int = 2
     public var maxShardsCap: Int = 6
     public var startSpawnJump: Double = 100.0        // max degrees between consecutive spawn angles
