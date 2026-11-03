@@ -1,0 +1,102 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # macos-15 + Xcode 16.4 is the newest pairing that still ships the
+    # Apple Watch SE (2nd generation) simulators (watchOS 11.5 runtime).
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      XCODEGEN_VERSION: "2.46.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: GameCore tests
+        run: swift test --package-path GameCore
+
+      - name: Offline and entitlements guard
+        run: |
+          # The workflow itself is excluded: it downloads XcodeGen.
+          if grep -rnE 'URLSession|import Network|NSAppTransport|http' \
+              --include='*.swift' --include='*.yml' --include='*.plist' \
+              GameCore Ringward RingwardWatch project.yml; then
+            echo "::error::Networking found in app code"
+            exit 1
+          fi
+          ENTITLEMENTS="$(find . -name '*.entitlements' -not -path './build/*')"
+          if [ -n "$ENTITLEMENTS" ]; then
+            echo "::error::Unexpected entitlements files: $ENTITLEMENTS"
+            exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xg"
+          XG="$(find "$RUNNER_TEMP/xg" -type f -name xcodegen -perm -u+x | head -1)"
+          if [ -z "$XG" ]; then
+            echo "::error::xcodegen binary not found in the release zip"
+            exit 1
+          fi
+          echo "XG=$XG" >> "$GITHUB_ENV"
+          "$XG" --version
+
+      - name: Generate Xcode project
+        run: '"$XG" generate'
+
+      - name: Build for iPhone (unsigned, Release)
+        run: |
+          xcodebuild build \
+            -project Ringward.xcodeproj \
+            -scheme Ringward \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package Ringward-unsigned.ipa
+        run: |
+          rm -rf build/ipa
+          mkdir -p build/ipa/Payload
+          cp -R build/device/Build/Products/Release-iphoneos/Ringward.app build/ipa/Payload/
+          (cd build/ipa && zip -qry ../../Ringward-unsigned.ipa Payload)
+
+      - name: Check the .ipa
+        run: bash scripts/check-ipa.sh Ringward-unsigned.ipa
+
+      # Uploaded before the simulator step so a simulator problem never costs the .ipa.
+      - name: Upload .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ringward-unsigned-ipa
+          path: Ringward-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Simulator screenshots (Apple Watch SE 40mm / 44mm)
+        run: bash scripts/sim-screenshots.sh
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ringward-screenshots
+          path: shots/
+          if-no-files-found: warn
+          retention-days: 30
