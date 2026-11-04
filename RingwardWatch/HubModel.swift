@@ -15,13 +15,20 @@ final class HubModel {
     let ringward: AppModel
     let lanternfall: LanternfallModel
     let showsPicker: Bool
+    let pickerStartsAtBottom: Bool
 
     init(options: LaunchOptions) {
+        pickerStartsAtBottom = options.pickerDemo == .bottom
         if options.demo != nil {
             ringward = AppModel(options: options)
             lanternfall = LanternfallModel(demo: .start)
             route = .ringward
             showsPicker = false
+        } else if options.pickerDemo != nil {
+            ringward = AppModel(options: LaunchOptions(demo: .start))
+            lanternfall = LanternfallModel(demo: .picker)
+            route = .picker
+            showsPicker = true
         } else if let lf = options.lanternfallDemo {
             ringward = AppModel(options: LaunchOptions(demo: .start))
             lanternfall = LanternfallModel(demo: lf)

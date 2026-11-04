@@ -55,4 +55,6 @@ targets:
       - package: GameCore
       - package: GameCore
         product: HordeCore
+      - package: GameCore
+        product: FXCore
     scheme: {}

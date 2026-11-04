@@ -11,9 +11,15 @@ enum LanternfallDemoMode: String {
     case picker, start, midgame, levelup
 }
 
+/// Picker screenshot modes: `-PickerDemo top|bottom` (scrolled to the start or the end).
+enum PickerDemoMode: String {
+    case top, bottom
+}
+
 struct LaunchOptions {
     let demo: DemoMode?
     var lanternfallDemo: LanternfallDemoMode? = nil
+    var pickerDemo: PickerDemoMode? = nil
 
     static var current: LaunchOptions {
         parse(ProcessInfo.processInfo.arguments)
@@ -23,6 +29,9 @@ struct LaunchOptions {
         var options = LaunchOptions(demo: parseRingwardDemo(arguments))
         if let i = arguments.firstIndex(of: "-LanternfallDemo"), i + 1 < arguments.count {
             options.lanternfallDemo = LanternfallDemoMode(rawValue: arguments[i + 1])
+        }
+        if let i = arguments.firstIndex(of: "-PickerDemo"), i + 1 < arguments.count {
+            options.pickerDemo = PickerDemoMode(rawValue: arguments[i + 1])
         }
         return options
     }
