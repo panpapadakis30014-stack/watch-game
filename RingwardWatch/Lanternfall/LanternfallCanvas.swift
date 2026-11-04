@@ -1,12 +1,19 @@
 import SwiftUI
 import HordeCore
+import FXCore
 
 /// Draws the graveyard from a `HordeGame` snapshot in one Canvas. Stateless:
 /// everything comes from the game, and effect timing uses game time so it
 /// freezes with the game. The hero is always drawn at the centre; the world
-/// scrolls under it. One Path per colour keeps the draw calls few.
+/// scrolls under it. The night background shows through (drawn by the hub).
+///
+/// Budget: ≤ 64 calls, 1 gradient (worst case ≈ 53: grid 1, lantern glow 1,
+/// gems 6, salt 2, enemies 7, embers 2, bolts 3, sparks 4, hero 4, puffs 1,
+/// arrow 1, hurt tint 1, particles ≤ 20). One Path per colour; no blur,
+/// shadow or filters.
 struct LanternfallCanvas: View {
     let game: HordeGame
+    let particles: ParticleSystem
     let reduceMotion: Bool
 
     // Visual-only sizes, in world units (1.0 = half the shorter side).
@@ -21,6 +28,8 @@ struct LanternfallCanvas: View {
     private static let iFrameBlink = 0.1
     private static let projectileTrail = 0.04       // seconds of travel behind the bolt
     private static let reducedSaltDuration = 0.2
+    private static let wardenHaloScale = 1.6
+    private static let wardenHaloOpacity = 0.2
 
     var body: some View {
         Canvas { context, size in
@@ -58,18 +67,15 @@ struct LanternfallCanvas: View {
         func screen(_ p: Vec2) -> CGPoint {
             CGPoint(x: cx + (p.x - heroPos.x) * unit + shakeX, y: cy + (p.y - heroPos.y) * unit)
         }
-        func disc(_ c: CGPoint, _ r: Double) -> CGRect {
-            CGRect(x: Double(c.x) - r, y: Double(c.y) - r, width: 2 * r, height: 2 * r)
-        }
         func visible(_ p: Vec2, margin: Double) -> Bool {
             abs(p.x - heroPos.x) <= halfW + margin && abs(p.y - heroPos.y) <= halfH + margin
         }
+        func addDisc(_ path: inout Path, _ c: CGPoint, _ r: Double) {
+            GlowPath.addCircle(&path, c, CGFloat(r))
+        }
         let centre = CGPoint(x: cx, y: cy)
 
-        // 1. Ground
-        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Theme.lfGround))
-
-        // 2. Dot grid, fixed to the world so it shows movement
+        // 1. Dot grid, fixed to the world so it shows movement
         let spacing = Self.gridSpacing
         let dot = max(1, unit * 0.012)
         var grid = Path()
@@ -85,105 +91,123 @@ struct LanternfallCanvas: View {
         }
         context.fill(grid, with: .color(Theme.lfGridDot))
 
-        // 3. Lantern glow around the hero
+        // 2. Lantern glow around the hero (the frame's only gradient)
         let glowR = Self.glowRadius * unit
-        context.fill(Path(ellipseIn: disc(centre, glowR)),
-                     with: .radialGradient(Gradient(colors: [Theme.lfLantern.opacity(0.22), Theme.lfLantern.opacity(0)]),
-                                           center: centre, startRadius: 0, endRadius: glowR))
+        var glow = Path()
+        addDisc(&glow, centre, glowR)
+        context.fill(glow, with: .radialGradient(Theme.lanternGlowGradient, center: centre, startRadius: 0, endRadius: glowR))
 
-        // 4. Gems in three tiers
-        var gemSmall = Path(), gemMedium = Path(), gemLarge = Path()
+        // 3. Gems in three tiers, softly glowing
+        var gemCores = [Path(), Path(), Path()], gemHalos = [Path(), Path(), Path()]
         for gem in game.gems where visible(gem.position, margin: 0.1) {
-            let r = disc(screen(gem.position), Self.gemRadius(gem.value) * unit)
-            if gem.value >= 5 {
-                gemLarge.addEllipse(in: r)
-            } else if gem.value >= 2 {
-                gemMedium.addEllipse(in: r)
-            } else {
-                gemSmall.addEllipse(in: r)
-            }
+            let tier = gem.value >= 5 ? 2 : (gem.value >= 2 ? 1 : 0)
+            let p = screen(gem.position)
+            let r = Self.gemRadius(gem.value) * unit
+            addDisc(&gemCores[tier], p, r)
+            addDisc(&gemHalos[tier], p, r * Double(Theme.glowSoft.haloWidth))
         }
-        context.fill(gemSmall, with: .color(Theme.lfGemSmall))
-        context.fill(gemMedium, with: .color(Theme.lfGemMedium))
-        context.fill(gemLarge, with: .color(Theme.lfGemLarge))
+        for (tier, colour) in [Theme.lfGemSmall, Theme.lfGemMedium, Theme.lfGemLarge].enumerated() {
+            GlowPath.fill(core: gemCores[tier], halo: gemHalos[tier], in: &context, color: colour, style: Theme.glowSoft)
+        }
 
-        // 5. Salt rings (static fill under Reduce Motion)
+        // 4. Salt rings: an expanding glowing ring, or a static fill under Reduce Motion
         for effect in game.effects {
             guard case .saltRing(let radius) = effect.kind else { continue }
             let age = now - effect.start
             guard age >= 0 else { continue }
             let p = screen(effect.position)
+            var ring = Path()
             if reduceMotion {
                 if age < Self.reducedSaltDuration {
-                    context.fill(Path(ellipseIn: disc(p, radius * unit)), with: .color(Theme.lfSalt.opacity(0.18)))
+                    addDisc(&ring, p, radius * unit)
+                    context.fill(ring, with: .color(Theme.lfSalt.opacity(0.18)))
                 }
             } else {
                 let t = min(age / effect.duration, 1)
-                context.stroke(Path(ellipseIn: disc(p, radius * unit * (0.4 + 0.6 * t))),
-                               with: .color(Theme.lfSalt.opacity(1 - t)), lineWidth: unit * 0.02)
+                addDisc(&ring, p, radius * unit * (0.4 + 0.6 * t))
+                GlowPath.stroke(ring, in: &context, color: Theme.lfSalt.opacity(1 - t),
+                                width: unit * 0.02, style: Theme.glowStandard)
             }
         }
 
-        // 6. Enemies by kind, white while just hit, plus a pair of eyes each
-        var shamblers = Path(), sprinters = Path(), bloats = Path(), wardens = Path(), flashed = Path(), eyes = Path()
+        // 5. Enemies by kind, white while just hit, a halo on the Warden, and eyes
+        var shamblers = Path(), sprinters = Path(), bloats = Path(), wardens = Path()
+        var flashed = Path(), eyes = Path(), wardenHalo = Path()
         for e in game.enemies where visible(e.position, margin: 0.3) {
             let r = e.radius(tuning) * unit
             let p = screen(e.position)
-            let shape = Path(ellipseIn: disc(p, r))
+            if e.kind == .warden {
+                addDisc(&wardenHalo, p, r * Self.wardenHaloScale)
+            }
             if e.hitFlash > 0 && !reduceMotion {
-                flashed.addPath(shape)
+                addDisc(&flashed, p, r)
             } else {
                 switch e.kind {
-                case .shambler: shamblers.addPath(shape)
-                case .sprinter: sprinters.addPath(shape)
-                case .bloat: bloats.addPath(shape)
-                case .warden: wardens.addPath(shape)
+                case .shambler: addDisc(&shamblers, p, r)
+                case .sprinter: addDisc(&sprinters, p, r)
+                case .bloat: addDisc(&bloats, p, r)
+                case .warden: addDisc(&wardens, p, r)
                 }
             }
             for side in [-1.0, 1.0] {
-                let eye = CGPoint(x: Double(p.x) + side * 0.32 * r, y: Double(p.y) - 0.2 * r)
-                eyes.addEllipse(in: disc(eye, max(1, 0.14 * r)))
+                addDisc(&eyes, CGPoint(x: Double(p.x) + side * 0.32 * r, y: Double(p.y) - 0.2 * r), max(1, 0.14 * r))
             }
+        }
+        let wardenColour = game.isEnraged ? Theme.lfEnraged : Theme.lfWarden
+        if !wardenHalo.isEmpty {
+            context.fill(wardenHalo, with: .color(wardenColour.opacity(Self.wardenHaloOpacity)))
         }
         context.fill(shamblers, with: .color(Theme.lfShambler))
         context.fill(sprinters, with: .color(Theme.lfSprinter))
         context.fill(bloats, with: .color(Theme.lfBloat))
-        context.fill(wardens, with: .color(game.isEnraged ? Theme.lfEnraged : Theme.lfWarden))
-        context.fill(flashed, with: .color(.white))
+        context.fill(wardens, with: .color(wardenColour))
+        context.fill(flashed, with: .color(Theme.glowHot))
         context.fill(eyes, with: .color(Theme.lfGround))
 
-        // 7. Embers
+        // 6. Embers
         let stats = game.stats
-        var embers = Path()
+        var embers = Path(), emberHalos = Path()
         for i in 0..<stats.emberCount {
-            embers.addEllipse(in: disc(screen(game.emberPosition(i)), tuning.emberRadius * unit))
+            let p = screen(game.emberPosition(i))
+            addDisc(&embers, p, tuning.emberRadius * unit)
+            addDisc(&emberHalos, p, tuning.emberRadius * unit * Double(Theme.glowSoft.haloWidth))
         }
-        context.fill(embers, with: .color(Theme.lfEmber))
+        GlowPath.fill(core: embers, halo: emberHalos, in: &context, color: Theme.lfEmber, style: Theme.glowSoft)
 
-        // 8. Lantern bolts with a short trail
-        var trails = Path(), bolts = Path()
+        // 7. Lantern bolts: trails (motion, so not under Reduce Motion), then glowing heads
+        var trails = Path(), bolts = Path(), boltHalos = Path()
         for proj in game.projectiles where visible(proj.position, margin: 0.2) {
             let p = screen(proj.position)
-            trails.move(to: p)
-            trails.addLine(to: screen(proj.position - proj.velocity * Self.projectileTrail))
-            bolts.addEllipse(in: disc(p, tuning.projectileRadius * unit))
+            if !reduceMotion {
+                trails.move(to: p)
+                trails.addLine(to: screen(proj.position - proj.velocity * Self.projectileTrail))
+            }
+            addDisc(&bolts, p, tuning.projectileRadius * unit)
+            addDisc(&boltHalos, p, tuning.projectileRadius * unit * Double(Theme.glowStandard.haloWidth))
         }
-        context.stroke(trails, with: .color(Theme.lfBolt.opacity(0.6)), style: StrokeStyle(lineWidth: unit * 0.02, lineCap: .round))
-        context.fill(bolts, with: .color(Theme.lfBolt))
+        if !trails.isEmpty {
+            context.stroke(trails, with: .color(Theme.lfBolt.opacity(0.6)), style: StrokeStyle(lineWidth: unit * 0.02, lineCap: .round))
+        }
+        GlowPath.fill(core: bolts, halo: boltHalos, in: &context, color: Theme.lfBolt, style: Theme.glowStandard)
 
-        // 9. Chain sparks
+        // 8. Chain sparks, in two fade steps
+        var freshSparks = Path(), fadingSparks = Path()
         for effect in game.effects {
             guard case .spark(let to) = effect.kind else { continue }
             let age = now - effect.start
             guard age >= 0 && age < effect.duration else { continue }
-            var line = Path()
-            line.move(to: screen(effect.position))
-            line.addLine(to: screen(to))
-            context.stroke(line, with: .color(Theme.lfSpark.opacity(1 - age / effect.duration)),
-                           style: StrokeStyle(lineWidth: unit * 0.015, lineCap: .round))
+            if age < effect.duration / 2 {
+                freshSparks.move(to: screen(effect.position))
+                freshSparks.addLine(to: screen(to))
+            } else {
+                fadingSparks.move(to: screen(effect.position))
+                fadingSparks.addLine(to: screen(to))
+            }
         }
+        GlowPath.stroke(freshSparks, in: &context, color: Theme.lfSpark, width: unit * 0.015, style: Theme.glowStandard)
+        GlowPath.stroke(fadingSparks, in: &context, color: Theme.lfSpark.opacity(0.5), width: unit * 0.015, style: Theme.glowStandard)
 
-        // 10. Hero at the exact centre (no shake), heading tick and dash ring
+        // 9. Hero at the exact centre (no shake): lantern halo, heading tick and dash ring
         var heroOpacity = 1.0
         if game.hero.iFrames > 0 {
             if reduceMotion {
@@ -192,18 +216,24 @@ struct LanternfallCanvas: View {
                 heroOpacity = Int(game.hero.iFrames / Self.iFrameBlink) % 2 == 0 ? 1 : 0.35
             }
         }
-        context.fill(Path(ellipseIn: disc(centre, tuning.heroRadius * unit)), with: .color(Theme.lfHero.opacity(heroOpacity)))
+        var heroCore = Path(), heroHalo = Path()
+        addDisc(&heroCore, centre, tuning.heroRadius * unit)
+        addDisc(&heroHalo, centre, tuning.heroRadius * unit * Double(Theme.glowStrong.haloWidth))
+        GlowPath.fill(core: heroCore, halo: heroHalo, in: &context, color: Theme.lfHero.opacity(heroOpacity),
+                      haloColor: Theme.lanternfallAccent, style: Theme.glowStrong)
         let heading = HordeMath.direction(degrees: game.hero.heading)
         var tick = Path()
         tick.move(to: CGPoint(x: cx + heading.x * tuning.heroRadius * unit, y: cy + heading.y * tuning.heroRadius * unit))
         tick.addLine(to: CGPoint(x: cx + heading.x * (tuning.heroRadius + Self.headingTick) * unit,
                                  y: cy + heading.y * (tuning.heroRadius + Self.headingTick) * unit))
-        context.stroke(tick, with: .color(Theme.lfLantern), style: StrokeStyle(lineWidth: unit * 0.025, lineCap: .round))
+        context.stroke(tick, with: .color(Theme.lanternfallAccent), style: StrokeStyle(lineWidth: unit * 0.025, lineCap: .round))
 
         let ringR = (tuning.heroRadius + Self.dashRingGap) * unit
         let fraction = game.dashReadyFraction
         if fraction >= 1 {
-            context.stroke(Path(ellipseIn: disc(centre, ringR)), with: .color(Theme.shield.opacity(0.6)), lineWidth: unit * 0.012)
+            var ring = Path()
+            addDisc(&ring, centre, ringR)
+            context.stroke(ring, with: .color(Theme.shield.opacity(0.6)), lineWidth: unit * 0.012)
         } else if fraction > 0 {
             var arc = Path()
             let segments = Self.dashRingSegments
@@ -215,18 +245,21 @@ struct LanternfallCanvas: View {
             context.stroke(arc, with: .color(Theme.shield.opacity(0.35)), style: StrokeStyle(lineWidth: unit * 0.012, lineCap: .round))
         }
 
-        // 11. Puffs where enemies fell
-        for effect in game.effects {
-            guard case .puff(let radius) = effect.kind else { continue }
-            let age = now - effect.start
-            guard age >= 0 && age < effect.duration else { continue }
-            let t = age / effect.duration
-            let r = radius * unit * (reduceMotion ? 1 : 1 + t)
-            context.stroke(Path(ellipseIn: disc(screen(effect.position), r)),
-                           with: .color(Theme.lfPuff.opacity(1 - t)), lineWidth: unit * 0.012)
+        // 10. Puffs: only under Reduce Motion, as a static fade (particles replace them otherwise)
+        if reduceMotion {
+            var puffs = Path()
+            for effect in game.effects {
+                guard case .puff(let radius) = effect.kind else { continue }
+                let age = now - effect.start
+                guard age >= 0 && age < effect.duration else { continue }
+                addDisc(&puffs, screen(effect.position), radius * unit)
+            }
+            if !puffs.isEmpty {
+                context.stroke(puffs, with: .color(Theme.lfPuff.opacity(0.5)), lineWidth: unit * 0.012)
+            }
         }
 
-        // 12. Arrow at the edge pointing to an off-screen Warden
+        // 11. Arrow at the edge pointing to an off-screen Warden
         if let boss = game.boss {
             let d = boss.position - heroPos
             if abs(d.x) > halfW || abs(d.y) > halfH {
@@ -243,13 +276,20 @@ struct LanternfallCanvas: View {
                 arrow.addLine(to: CGPoint(x: Double(base.x) - n.x * s * 0.6 + n.y * s * 0.6,
                                           y: Double(base.y) - n.y * s * 0.6 - n.x * s * 0.6))
                 arrow.closeSubpath()
-                context.fill(arrow, with: .color(game.isEnraged ? Theme.lfEnraged : Theme.lfWarden))
+                context.fill(arrow, with: .color(wardenColour))
             }
         }
 
-        // 13. Reduce Motion: a static red tint instead of the shake
+        // 12. Reduce Motion: a static red tint instead of the shake
         if reduceMotion, let hurt = latestHurt, now - hurt.start >= 0, now - hurt.start < hurt.duration {
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Theme.danger.opacity(0.18)))
+        }
+
+        // 13. Particles (none exist under Reduce Motion)
+        ParticleLayer.draw(particles, in: &context,
+                           palette: [Theme.lfShambler, Theme.lfSprinter, Theme.lfBloat, Theme.lanternfallAccent, Theme.danger],
+                           scale: unit) { v in
+            screen(Vec2(x: v.x, y: v.y))
         }
     }
 }

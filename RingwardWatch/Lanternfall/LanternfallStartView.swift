@@ -1,24 +1,26 @@
 import SwiftUI
 
+/// Kept compact (34 pt buttons, tight spacing, caption-size hint) so the
+/// "Games" button is on screen at 40mm.
 struct LanternfallStartView: View {
     @Environment(LanternfallModel.self) private var model
 
     var body: some View {
         let records = model.records
         CenteredScroll {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Text("Lanternfall")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.lfLantern)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(Theme.lanternfallAccent)
                 Text(LanternfallCopy.startRecordsLine(records))
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.white)
+                    .font(Theme.bodyFont.monospacedDigit())
+                    .foregroundStyle(Theme.hudPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .accessibilityLabel(LanternfallCopy.startRecordsAccessibility(records))
                 if records.dawns > 0 {
                     Text("Dawns reached: \(records.dawns)")
-                        .font(.footnote)
+                        .font(Theme.bodyFont)
                         .foregroundStyle(Theme.secondaryText)
                         .accessibilityLabel("Dawns reached \(records.dawns)")
                 }
@@ -26,14 +28,12 @@ struct LanternfallStartView: View {
                     model.startRun()
                 } label: {
                     Text("Tap to play")
-                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.lfLantern)
+                .buttonStyle(PrimaryButtonStyle(accent: Theme.lanternfallAccent))
                 .accessibilityLabel("Tap to play")
                 if !model.hasPlayed {
                     Text("Turn the Crown to steer. Tap to dash. Last until dawn.")
-                        .font(.footnote)
+                        .font(Theme.hintFont)
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(3)
                         .minimumScaleFactor(0.8)
@@ -45,7 +45,7 @@ struct LanternfallStartView: View {
                     } label: {
                         Text("Games")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryButtonStyle(accent: Theme.lanternfallAccent))
                     .accessibilityLabel("Back to games")
                 }
             }

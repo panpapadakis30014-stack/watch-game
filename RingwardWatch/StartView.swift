@@ -5,7 +5,7 @@ struct StartView: View {
 
     var body: some View {
         CenteredScroll {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Text("Ringward")
                     .font(Theme.titleFont)
                     .foregroundStyle(Theme.ringwardAccent)
@@ -22,7 +22,7 @@ struct StartView: View {
                 .accessibilityLabel("Tap to play")
                 if !model.hasPlayed {
                     Text("Turn the Crown to swing your shield. Tap when the Pulse is full.")
-                        .font(Theme.bodyFont)
+                        .font(Theme.hintFont)
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(3)
                         .minimumScaleFactor(0.8)

@@ -34,6 +34,15 @@ final class LanternfallModel {
 
     var records: HordeRecords { keeper.records }
 
+    /// Identifies the current screen kind, for screen transitions.
+    var screenKey: Int {
+        switch screen {
+        case .start: return 0
+        case .playing: return 1
+        case .results: return 2
+        }
+    }
+
     /// Set by the game picker.
     var exitToPicker: (@MainActor () -> Void)? = nil
 
@@ -54,12 +63,16 @@ final class LanternfallModel {
             keeper = HordeRecordsKeeper(store: InMemoryHordeRecordsStore())
             hasPlayed = false
             let game = demo == .midgame ? HordeDemo.midGame() : HordeDemo.levelUpOffer()
-            screen = .playing(LanternfallController(
+            let controller = LanternfallController(
                 game: game,
                 frozen: true,
                 haptics: ThrottledHaptics(Haptics(isEnabled: false)),
                 onFinish: { _, _ in }
-            ))
+            )
+            if demo == .midgame {
+                controller.seedDemoEffects()
+            }
+            screen = .playing(controller)
         }
     }
 

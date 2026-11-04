@@ -61,6 +61,9 @@ struct LanternfallGameView: View {
             .onAppear {
                 crownFocused = true
             }
+            .onChange(of: reduceMotion, initial: true) { _, reduce in
+                controller.setReduceMotion(reduce)
+            }
             .onChange(of: controller.game.offer?.serial) { _, serial in
                 // Choosing an upgrade can move focus to the button; take the Crown back.
                 if serial == nil {
@@ -84,7 +87,7 @@ struct LanternfallGameView: View {
 
     private var arena: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !controller.isRunning)) { timeline in
-            LanternfallCanvas(game: controller.game, reduceMotion: reduceMotion)
+            LanternfallCanvas(game: controller.game, particles: controller.fx, reduceMotion: reduceMotion)
                 .onChange(of: timeline.date) { _, date in
                     controller.tick(now: date)
                 }
@@ -121,15 +124,11 @@ struct LanternfallGameView: View {
 
     private func clockView(game: HordeGame) -> some View {
         let seconds = Int(game.elapsed)
-        return VStack(alignment: .trailing, spacing: 0) {
-            Text(LanternfallCopy.clock(seconds))
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(.white)
-                .accessibilityLabel("Time \(LanternfallCopy.spokenTime(seconds))")
-            Text("Lv \(game.level)")
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(Theme.lfLantern)
-                .accessibilityLabel("Level \(game.level)")
+        return VStack(alignment: .trailing, spacing: 2) {
+            HUDLabel(text: LanternfallCopy.clock(seconds), role: .value, plate: true,
+                     accessibilityText: "Time \(LanternfallCopy.spokenTime(seconds))")
+            HUDLabel(text: "Lv \(game.level)", role: .caption, color: Theme.lanternfallAccent, plate: true,
+                     accessibilityText: "Level \(game.level)")
         }
     }
 
@@ -141,17 +140,9 @@ struct LanternfallGameView: View {
             let fraction = min(max(boss.hp / boss.maxHP, 0), 1)
             let percent = Int((fraction * 100).rounded(.up))
             let colour = game.isEnraged ? Theme.lfEnraged : Theme.lfWarden
-            VStack(spacing: 2) {
-                Capsule()
-                    .fill(Theme.ring)
-                    .frame(width: width, height: height)
-                    .overlay(alignment: .leading) {
-                        Capsule()
-                            .fill(colour)
-                            .frame(width: width * CGFloat(fraction), height: height)
-                    }
-                    .accessibilityElement()
-                    .accessibilityLabel("Grave Warden health \(percent) percent")
+            VStack(spacing: 3) {
+                HUDBar(fraction: fraction, width: width, height: height, tint: colour, glow: true,
+                       accessibilityText: "Grave Warden health \(percent) percent")
                 if game.isEnraged && game.elapsed < game.tuning.enrageTime + Theme.lfBannerDuration {
                     banner("The Warden is enraged", colour: Theme.lfEnraged)
                 } else if game.elapsed < game.tuning.bossTime + Theme.lfBannerDuration {
@@ -163,51 +154,28 @@ struct LanternfallGameView: View {
     }
 
     private func banner(_ text: String, colour: Color) -> some View {
-        Text(text)
-            .font(.caption2.bold())
-            .foregroundStyle(colour)
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
+        HUDLabel(text: text, role: .caption, color: colour, plate: true, accessibilityText: text)
     }
 
     private func healthView(game: HordeGame) -> some View {
         let maxHP = game.stats.maxHP
-        return HStack(spacing: 2) {
-            Image(systemName: "heart.fill")
-            Text("\(game.hero.hp)/\(maxHP)")
-        }
-        .font(.footnote.monospacedDigit())
-        .foregroundStyle(Theme.danger)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LanternfallCopy.healthLabel(hp: game.hero.hp, maxHP: maxHP))
+        return HUDLabel(text: "\(game.hero.hp)/\(maxHP)", role: .detail, color: Theme.danger, symbol: "heart.fill",
+                        plate: true, accessibilityText: LanternfallCopy.healthLabel(hp: game.hero.hp, maxHP: maxHP))
     }
 
     private func killsView(game: HordeGame) -> some View {
-        HStack(spacing: 2) {
-            Image(systemName: "scope")
-            Text("\(game.kills)")
-        }
-        .font(.footnote.monospacedDigit())
-        .foregroundStyle(.white)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LanternfallCopy.killsLabel(game.kills))
+        HUDLabel(text: "\(game.kills)", role: .detail, symbol: "scope", countingValue: Double(game.kills),
+                 plate: true, accessibilityText: LanternfallCopy.killsLabel(game.kills))
     }
 
+    /// No plate and no glow, so it covers no more of the field than before.
     private func xpBar(game: HordeGame, size: CGSize) -> some View {
         let width = size.width * Theme.lfXPBarWidthRatio
         let height = max(3, size.height * Theme.lfBarHeightRatio)
         let need = game.xpToNext
-        let fraction = need > 0 ? min(CGFloat(game.xp) / CGFloat(need), 1) : 0
-        return Capsule()
-            .fill(Theme.ring)
-            .frame(width: width, height: height)
-            .overlay(alignment: .leading) {
-                Capsule()
-                    .fill(Theme.lfXP)
-                    .frame(width: width * fraction, height: height)
-            }
+        let fraction = need > 0 ? min(Double(game.xp) / Double(need), 1) : 0
+        return HUDBar(fraction: fraction, width: width, height: height, tint: Theme.lfXP,
+                      accessibilityText: "Experience \(game.xp) of \(need)")
             .padding(.bottom, 4)
-            .accessibilityElement()
-            .accessibilityLabel("Experience \(game.xp) of \(need)")
     }
 }

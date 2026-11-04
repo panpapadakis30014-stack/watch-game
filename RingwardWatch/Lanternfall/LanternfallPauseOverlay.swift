@@ -14,23 +14,21 @@ struct LanternfallPauseOverlay: View {
                 .onTapGesture {}
             VStack(spacing: 6) {
                 Text("Paused")
-                    .font(.title3)
-                    .foregroundStyle(.white)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(Theme.hudPrimary)
                 Button {
                     onResume()
                 } label: {
                     Text("Resume")
-                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.lfLantern)
+                .buttonStyle(PrimaryButtonStyle(accent: Theme.lanternfallAccent))
                 .accessibilityLabel("Resume")
                 Button {
                     onEnd()
                 } label: {
                     Text("End run")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(SecondaryButtonStyle(accent: Theme.lanternfallAccent))
                 .accessibilityLabel("End run")
                 .accessibilityHint("Ends this run and saves your records")
             }

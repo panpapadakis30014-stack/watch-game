@@ -13,34 +13,34 @@ struct LanternfallResultsView: View {
         CenteredScroll {
             VStack(spacing: 4) {
                 Text(LanternfallCopy.outcomeTitle(result.outcome))
-                    .font(.title3)
-                    .foregroundStyle(result.outcome == .dawn ? Theme.lfLantern : .white)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(result.outcome == .dawn ? Theme.lanternfallAccent : Theme.hudPrimary)
                     .multilineTextAlignment(.center)
                 Text("Time \(LanternfallCopy.clock(summary.seconds))")
-                    .font(.title2.monospacedDigit())
-                    .foregroundStyle(.white)
+                    .font(Theme.resultFont)
+                    .foregroundStyle(Theme.hudPrimary)
                     .accessibilityLabel("Time \(LanternfallCopy.spokenTime(summary.seconds))")
                 Text(LanternfallCopy.resultsLine(summary))
-                    .font(.headline.monospacedDigit())
+                    .font(Theme.hudValueFont)
                     .foregroundStyle(Theme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .accessibilityLabel(LanternfallCopy.resultsAccessibility(summary))
                 if result.update.newBestTime {
                     Text("New best time!")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.lfLantern)
+                        .font(Theme.bodyFont)
+                        .foregroundStyle(Theme.lanternfallAccent)
                         .accessibilityLabel("New best time")
                 }
                 if result.update.newMostKills {
                     Text("New most kills!")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.lfLantern)
+                        .font(Theme.bodyFont)
+                        .foregroundStyle(Theme.lanternfallAccent)
                         .accessibilityLabel("New most kills")
                 }
                 if result.outcome == .dawn {
                     Text("Dawns reached: \(result.records.dawns)")
-                        .font(.footnote)
+                        .font(Theme.bodyFont)
                         .foregroundStyle(Theme.secondaryText)
                         .accessibilityLabel("Dawns reached \(result.records.dawns)")
                 }
@@ -48,10 +48,8 @@ struct LanternfallResultsView: View {
                     model.playAgain()
                 } label: {
                     Text("Play again")
-                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.lfLantern)
+                .buttonStyle(PrimaryButtonStyle(accent: Theme.lanternfallAccent))
                 .disabled(!armed)
                 .accessibilityLabel("Play again")
                 if model.exitToPicker != nil {
@@ -60,7 +58,7 @@ struct LanternfallResultsView: View {
                     } label: {
                         Text("Games")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryButtonStyle(accent: Theme.lanternfallAccent))
                     .disabled(!armed)
                     .accessibilityLabel("Back to games")
                 }

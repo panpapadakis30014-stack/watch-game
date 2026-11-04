@@ -136,6 +136,7 @@ enum Theme {
     static let titleFont = Font.title3.weight(.semibold)
     static let cardTitleFont = Font.headline.weight(.semibold)
     static let bodyFont = Font.footnote.weight(.medium)
+    static let hintFont = Font.caption2.weight(.medium)  // first-run hints: compact so "Games" fits at 40mm
     static let buttonFont = Font.headline.weight(.semibold)
     static let resultFont = Font.title2.weight(.bold).monospacedDigit()
     static let hudScoreFont = Font.title3.weight(.semibold).monospacedDigit()

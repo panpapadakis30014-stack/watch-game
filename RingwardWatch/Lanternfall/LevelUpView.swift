@@ -31,9 +31,10 @@ struct LevelUpView: View {
 
     private var content: some View {
         VStack(spacing: 4) {
+            // Footnote-sized title (not cardTitleFont) so three rows still fit at 40mm.
             Text(LanternfallCopy.levelUpTitle(offer.heroLevel))
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Theme.lfLantern)
+                .font(Theme.bodyFont.weight(.semibold))
+                .foregroundStyle(Theme.lanternfallAccent)
                 .accessibilityLabel(LanternfallCopy.levelUpAccessibility(offer.heroLevel))
             ForEach(offer.options.indices, id: \.self) { i in
                 optionButton(offer.options[i], index: i)
@@ -48,17 +49,17 @@ struct LevelUpView: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
                     Text(LanternfallCopy.name(option.kind))
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .font(Theme.bodyFont.weight(.semibold))
+                        .foregroundStyle(Theme.hudPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
                     Spacer(minLength: 2)
                     Text(LanternfallCopy.levelLine(option))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(Theme.lfLantern)
+                        .font(Theme.hudCaptionFont)
+                        .foregroundStyle(Theme.lanternfallAccent)
                 }
                 Text(LanternfallCopy.effect(option.kind, toLevel: option.toLevel))
-                    .font(.caption2)
+                    .font(Theme.hudCaptionFont)
                     .foregroundStyle(Theme.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -67,11 +68,13 @@ struct LevelUpView: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity, minHeight: Theme.minTapTarget, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: Theme.cardCornerRadius).fill(Theme.cardFill))
+            .overlay(RoundedRectangle(cornerRadius: Theme.cardCornerRadius)
+                .strokeBorder(Theme.lanternfall.border, lineWidth: Theme.cardBorderWidth))
             .contentShape(RoundedRectangle(cornerRadius: Theme.cardCornerRadius))
         }
         .buttonStyle(.plain)
         .disabled(!armed)
-        .opacity(armed ? 1 : 0.55)
+        .opacity(armed ? 1 : Theme.disabledOpacity)
         .accessibilityLabel(LanternfallCopy.optionAccessibility(option))
         .accessibilityHint("Choose this upgrade")
     }
