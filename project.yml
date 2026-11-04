@@ -53,4 +53,6 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: GameCore
+      - package: GameCore
+        product: HordeCore
     scheme: {}

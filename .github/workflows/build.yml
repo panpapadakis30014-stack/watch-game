@@ -46,6 +46,12 @@ jobs:
             echo "::error::Unexpected entitlements files: $ENTITLEMENTS"
             exit 1
           fi
+          # Game logic: GameCore imports nothing, HordeCore only GameCore, and
+          # all randomness comes from the seeded SplitMix64.
+          if grep -rn '^import' GameCore/Sources/GameCore; then echo "::error::GameCore must not import anything"; exit 1; fi
+          BAD="$(grep -rn '^import' GameCore/Sources/HordeCore | grep -v ':import GameCore$' || true)"
+          [ -z "$BAD" ] || { echo "::error::HordeCore may only import GameCore: $BAD"; exit 1; }
+          if grep -rnE 'SystemRandomNumberGenerator|\.random\(' GameCore/Sources; then echo "::error::Game logic must use SplitMix64"; exit 1; fi
 
       - name: Install XcodeGen
         run: |

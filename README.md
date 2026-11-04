@@ -2,16 +2,34 @@
 
 ## What this is
 
-Ringward is a small, fully offline game for Apple Watch SE (40mm and 44mm, watchOS 10 or later). A glowing core sits in the middle of a round arena and shards fly in from the edge. You turn the Digital Crown to swing a shield arc around the core and block them. Every block charges a Pulse; when it is full, a tap anywhere clears every shard on screen. A shard that gets past the shield costs one of 3 lives. Speed and shard count rise over time. The best score is kept on the watch. There is no networking, no account, no ads and no tracking.
+Ringward is a small, fully offline app for Apple Watch SE (40mm and 44mm, watchOS 10 or later) with two games. In **Ringward**, a glowing core sits in the middle of a round arena and shards fly in from the edge; you turn the Digital Crown to swing a shield arc and block them. In **Lanternfall**, you steer a lantern-keeper through a graveyard at night while your weapons fire on their own at the Risen; when the Grave Warden appears, defeat it to reach dawn. Best results are kept on the watch. There is no networking, no account, no ads and no tracking.
 
 **The iPhone part is only the delivery vehicle.** Installing Ringward puts a "Ringward" icon on the iPhone. That icon never needs opening: it only says "Open Ringward on your Apple Watch to play." The game runs on the watch on its own, even when the phone is away (`WKRunsIndependentlyOfCompanionApp` is on). **Leave the iPhone icon installed**: removing it is expected to remove the watch app as well. The free-account signature also covers the watch app, so when it expires after 7 days the watch game stops opening until you re-sign it in Sideloadly (see "Every 7 days" below).
 
 How it is built:
 
 - `GameCore/`: all game rules in plain Swift (no Apple frameworks), with tests that run on Linux.
+- `GameCore/Sources/HordeCore/`: Lanternfall's rules, also plain Swift, with tests that run on Linux.
 - `RingwardWatch/`: the SwiftUI watch app. `Ringward/`: the iPhone placeholder that carries it.
 - `project.yml`: the Xcode project description (XcodeGen). The `.xcodeproj` is generated, never committed.
 - `.github/workflows/build.yml`: GitHub Actions builds an unsigned `Ringward-unsigned.ipa` on a Mac runner, checks it, and takes simulator screenshots.
+
+## Games
+
+The watch app opens on a game picker with two buttons, **Ringward** and **Lanternfall**, each showing your best result. Tap one to open it; if the list does not fit, turn the Crown to scroll. The start and end screens of both games have a **Games** button that brings you back to the picker.
+
+### Ringward
+
+Turn the Digital Crown to swing the shield and block the shards. When the Pulse meter is full, tap anywhere to clear the screen. A shard that gets past costs one of 3 lives. The button in the top-left corner pauses.
+
+### Lanternfall
+
+- You always walk forward. Turn the Digital Crown to steer.
+- Tap anywhere to dash: a short burst of speed during which nothing can hurt you. The ring around you fills up again while the dash recharges (3 seconds at first).
+- Your weapons fire on their own. Pick up the gems the Risen drop to gain experience. Each level-up pauses the game and offers three upgrades; tap one. The choices accept taps after a short moment, so a dash tap cannot pick one by accident.
+- At 5:00 the Grave Warden rises. When it is off screen, an arrow at the edge points to it. Defeat it to reach dawn and win. If it is still standing at 7:00, the Warden and the whole horde become enraged and faster.
+- The button in the top-left corner pauses; from there you can resume or end the run. Lowering your wrist or leaving the app also pauses.
+- The watch keeps your longest night, most kills and how many dawns you have reached. Nothing else carries over between runs.
 
 ## Build locally (Linux, logic only)
 
@@ -64,6 +82,8 @@ When the "build" run is green:
   ~/.local/bin/gh run download --name ringward-screenshots --dir ~/Downloads/ringward-shots
   ```
 
+`ringward-screenshots` contains `se40-` and `se44-` versions of `start`, `midgame`, `picker`, `lanternfall-start`, `lanternfall-midgame` and `lanternfall-levelup`.
+
 If the screenshot artifact is missing, the run log of the "Simulator screenshots" step says why (a missing Apple Watch SE simulator is logged as a warning and skipped, never faked).
 
 ## Install with Sideloadly (Windows VM)
@@ -97,4 +117,5 @@ A free Apple ID allows only **3 active sideloaded apps** at a time, and TikTok, 
 
 - Sideloadly signing an app with an embedded watch app on a free Apple ID is untested. Sideloadly may add your team suffix to bundle IDs; if it changes the iPhone app's ID without updating the watch app to match, the watch install will fail. Only a real try will tell.
 - The Crown speed is tuned blind: `crownDegreesPerUnit` in `GameCore/Sources/GameCore/Tuning.swift` is a guess and the first thing to adjust after playing on a real watch. All other gameplay numbers live in the same file.
+- Lanternfall's numbers (steering speed, enemy speed and numbers, upgrade strength, Warden health) are in `GameCore/Sources/HordeCore/HordeTuning.swift` and have not been tried on a real watch.
 - Nothing here has run on a real Apple Watch yet. CI proves it builds, packages and launches in the simulator, nothing more.
