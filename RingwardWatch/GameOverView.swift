@@ -38,6 +38,16 @@ struct GameOverView: View {
                 .tint(Theme.shield)
                 .disabled(!armed)
                 .accessibilityLabel("Tap to retry")
+                if model.exitToPicker != nil {
+                    Button {
+                        model.leaveToPicker()
+                    } label: {
+                        Text("Games")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!armed)
+                    .accessibilityLabel("Back to games")
+                }
             }
             .padding(.horizontal, 4)
         }

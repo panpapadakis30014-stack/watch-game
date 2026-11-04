@@ -30,6 +30,15 @@ struct StartView: View {
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                 }
+                if model.exitToPicker != nil {
+                    Button {
+                        model.leaveToPicker()
+                    } label: {
+                        Text("Games")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Back to games")
+                }
             }
             .padding(.horizontal, 4)
         }

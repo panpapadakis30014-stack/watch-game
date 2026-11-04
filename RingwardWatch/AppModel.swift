@@ -28,6 +28,9 @@ final class AppModel {
 
     var best: Int { keeper.best }
 
+    /// Set by the game picker; nil when Ringward runs on its own (screenshot demos).
+    var exitToPicker: (@MainActor () -> Void)? = nil
+
     init(options: LaunchOptions) {
         let demo = options.demo != nil
         isDemo = demo
@@ -67,6 +70,14 @@ final class AppModel {
 
     func retry() {
         startRound()
+    }
+
+    func showStart() {
+        screen = .start
+    }
+
+    func leaveToPicker() {
+        exitToPicker?()
     }
 
     private func finishRound(score: Int) {
