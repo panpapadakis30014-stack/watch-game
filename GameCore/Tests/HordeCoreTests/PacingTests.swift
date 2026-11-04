@@ -31,6 +31,23 @@ final class HordePacingTests: XCTestCase {
         }
     }
 
+    func testWardenFallsBeforeEnrageForMostRuns() {
+        var ends: [Double] = []
+        var earlyDawns = 0
+        for seed: UInt64 in 1...10 {
+            let g = run(seed: seed, tuning: .standard, until: 900)
+            ends.append(g.elapsed)
+            if g.phase == .dawn && g.elapsed < g.tuning.enrageTime {
+                earlyDawns += 1
+            }
+        }
+        let sorted = ends.sorted()
+        let median = (sorted[4] + sorted[5]) / 2
+        XCTAssertGreaterThanOrEqual(earlyDawns, 6, "dawns before enrage")
+        XCTAssertGreaterThanOrEqual(median, 300)
+        XCTAssertLessThanOrEqual(median, 420)
+    }
+
     func testPrintRunLengthEvidence() {
         var ends: [Double] = []
         for seed: UInt64 in 1...10 {

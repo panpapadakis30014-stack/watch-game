@@ -74,7 +74,7 @@ public struct HordeTuning: Equatable {
     public var shambler = EnemyStats(hp: 3, speed: 0.22, damage: 1, radius: 0.07, xp: 1)
     public var sprinter = EnemyStats(hp: 2, speed: 0.60, damage: 1, radius: 0.055, xp: 2)
     public var bloat = EnemyStats(hp: 14, speed: 0.15, damage: 2, radius: 0.11, xp: 5)
-    public var warden = EnemyStats(hp: 600, speed: 0.18, damage: 2, radius: 0.22, xp: 0)
+    public var warden = EnemyStats(hp: 350, speed: 0.30, damage: 2, radius: 0.22, xp: 0)
     public var separationStrength: Double = 0.5
 
     // Spawning
@@ -91,7 +91,7 @@ public struct HordeTuning: Equatable {
     public var enragedSummonInterval: Double = 5
     public var summonCount: Int = 8
     public var summonRingRadius: Double = 0.45
-    public var enragedWardenSpeed: Double = 0.30
+    public var enragedWardenSpeed: Double = 0.40
     public var enragedWardenDamage: Int = 3
     public var enrageSpawnScale: Double = 0.6         // multiplies regular spawn intervals
     public var enrageEnemySpeedScale: Double = 1.25   // non-warden enemies while enraged

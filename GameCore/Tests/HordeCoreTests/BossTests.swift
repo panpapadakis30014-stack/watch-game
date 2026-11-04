@@ -63,7 +63,7 @@ final class BossTests: XCTestCase {
         let events = g.step(dt: dt)
         XCTAssertEqual(events.filter { $0 == .bossEnraged }.count, 1)
         XCTAssertTrue(g.isEnraged)
-        XCTAssertEqual((g.enemies[w].position - wardenBefore).length, 0.30 * dt, accuracy: 1e-9)
+        XCTAssertEqual((g.enemies[w].position - wardenBefore).length, 0.40 * dt, accuracy: 1e-9)
         XCTAssertEqual((g.enemies[s].position - shamblerBefore).length, 0.22 * 1.25 * dt, accuracy: 1e-9)
         XCTAssertEqual(g.summonTimer, 0.01 - dt + 5, accuracy: 1e-9)   // next summon in 5 s
         XCTAssertFalse(g.step(dt: dt).contains(.bossEnraged))
