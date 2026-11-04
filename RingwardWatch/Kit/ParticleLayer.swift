@@ -3,12 +3,13 @@ import FXCore
 
 /// Draws a ParticleSystem inside a Canvas with a fixed number of calls:
 /// particles are batched per palette colour into 3 opacity buckets, and the
-/// brightest bucket gets one halo Path. At most 4 calls per palette colour,
-/// whatever the particle count. Styles outside the palette are skipped.
+/// brightest bucket gets one additive (.plusLighter) halo Path. At most 4
+/// calls per palette colour, whatever the particle count. Styles outside the
+/// palette are skipped.
 enum ParticleLayer {
     private static let bucketOpacity: [Double] = [1, 0.6, 0.3]
-    private static let haloScale: CGFloat = 2.2
-    private static let haloOpacity = 0.25
+    private static let haloScale: CGFloat = 2.0
+    private static let haloOpacity = 0.22
 
     static func draw(_ system: ParticleSystem, in context: inout GraphicsContext, palette: [Color],
                      scale: CGFloat, map: (FXVec) -> CGPoint) {
@@ -26,10 +27,12 @@ enum ParticleLayer {
                 GlowPath.addCircle(&halos[particle.style], centre, radius * haloScale)
             }
         }
+        context.blendMode = .plusLighter
+        for (i, colour) in palette.enumerated() where !halos[i].isEmpty {
+            context.fill(halos[i], with: .color(colour.opacity(haloOpacity)))
+        }
+        context.blendMode = .normal
         for (i, colour) in palette.enumerated() {
-            if !halos[i].isEmpty {
-                context.fill(halos[i], with: .color(colour.opacity(haloOpacity)))
-            }
             for b in 0..<3 where !cores[i * 3 + b].isEmpty {
                 context.fill(cores[i * 3 + b], with: .color(colour.opacity(bucketOpacity[b])))
             }

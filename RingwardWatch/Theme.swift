@@ -11,11 +11,13 @@ struct GameAccent {
     }
 }
 
-/// Two-layer glow without blur filters: a wide low-opacity halo under the
-/// crisp core, plus an optional thin white "hot" line on top.
+/// Glow without blur filters: up to two additive (plusLighter) halos under
+/// the crisp core, plus an optional thin white "hot" line on top.
 struct GlowStyle {
-    let haloWidth: CGFloat      // × the core width (strokes) or radius (fills)
+    let haloWidth: CGFloat      // inner halo, × the core width (strokes) or radius (fills)
     let haloOpacity: Double
+    let outerWidth: CGFloat     // outer halo, same units; 0 = no outer layer
+    let outerOpacity: Double
     let hotWidth: CGFloat       // × the core width; 0 = no hot line
     let hotOpacity: Double
 }
@@ -126,9 +128,12 @@ enum Theme {
     static let lfBarHeightRatio: CGFloat = 0.022
 
     // Glow
-    static let glowSoft = GlowStyle(haloWidth: 2.4, haloOpacity: 0.16, hotWidth: 0, hotOpacity: 0)
-    static let glowStandard = GlowStyle(haloWidth: 3.0, haloOpacity: 0.22, hotWidth: 0, hotOpacity: 0)
-    static let glowStrong = GlowStyle(haloWidth: 3.2, haloOpacity: 0.28, hotWidth: 0.35, hotOpacity: 0.6)
+    static let glowSoft = GlowStyle(haloWidth: 1.8, haloOpacity: 0.28, outerWidth: 0, outerOpacity: 0,
+                                    hotWidth: 0, hotOpacity: 0)
+    static let glowStandard = GlowStyle(haloWidth: 1.8, haloOpacity: 0.30, outerWidth: 2.8, outerOpacity: 0.10,
+                                        hotWidth: 0, hotOpacity: 0)
+    static let glowStrong = GlowStyle(haloWidth: 1.9, haloOpacity: 0.34, outerWidth: 3.0, outerOpacity: 0.12,
+                                      hotWidth: 0.35, hotOpacity: 0.6)
     static let coreGlowGradient = Gradient(colors: [shield.opacity(0.45), shield.opacity(0)])
     static let lanternGlowGradient = Gradient(colors: [lfLantern.opacity(0.22), lfLantern.opacity(0)])
 

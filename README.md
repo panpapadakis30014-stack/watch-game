@@ -16,7 +16,7 @@ How it is built:
 
 ## Games
 
-The watch app opens on a game picker with two buttons, **Ringward** and **Lanternfall**, each showing your best result. Tap one to open it; if the list does not fit, turn the Crown to scroll. The start and end screens of both games have a **Games** button that brings you back to the picker.
+The watch app opens on a game picker with two buttons, **Ringward** and **Lanternfall**, each showing your best result. Tap one to open it; if the list does not fit, turn the Crown to scroll. The start and end screens of both games have a **‹ Games** button in the top-left corner that brings you back to the picker.
 
 The app uses a night theme with glowing game pieces and short bursts of particles. With Reduce Motion on, the particles, screen shake and zoom animations are turned off.
 

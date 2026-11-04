@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Lanternfall's picker illustration: the lantern-keeper in its glow among
 /// gravestones, a few Risen closing in, a bolt in flight and a crescent moon.
-/// 18 draw calls, 1 gradient.
+/// 19 draw calls, 1 gradient.
 enum LanternfallArtwork: GameArtwork {
     static func draw(in context: inout GraphicsContext, size: CGSize) {
         let u = size.height, w = size.width
@@ -45,12 +45,9 @@ enum LanternfallArtwork: GameArtwork {
                      with: .radialGradient(Theme.lanternGlowGradient, center: hero, startRadius: 0, endRadius: glowR))
 
         // Gems
-        var gems = Path(), gemHalos = Path()
-        for p in [CGPoint(x: 0.38 * w, y: 0.75 * u), CGPoint(x: 0.42 * w, y: 0.80 * u), CGPoint(x: 0.56 * w, y: 0.82 * u)] {
-            GlowPath.addCircle(&gems, p, 0.02 * u)
-            GlowPath.addCircle(&gemHalos, p, 0.02 * u * Theme.glowSoft.haloWidth)
-        }
-        GlowPath.fill(core: gems, halo: gemHalos, in: &context, color: Theme.lfGemSmall, style: Theme.glowSoft)
+        GlowPath.fillCircles([CGPoint(x: 0.38 * w, y: 0.75 * u), CGPoint(x: 0.42 * w, y: 0.80 * u),
+                              CGPoint(x: 0.56 * w, y: 0.82 * u)],
+                             radius: 0.02 * u, in: &context, color: Theme.lfGemSmall, style: Theme.glowSoft)
 
         // The Risen, one Path per colour, plus their eyes
         var shamblers = Path(), sprinters = Path(), bloats = Path(), eyes = Path()
@@ -83,17 +80,11 @@ enum LanternfallArtwork: GameArtwork {
         trail.move(to: bolt)
         trail.addLine(to: CGPoint(x: bolt.x + dx / len * 0.12 * u, y: bolt.y + dy / len * 0.12 * u))
         context.stroke(trail, with: .color(Theme.lfBolt.opacity(0.5)), style: StrokeStyle(lineWidth: 0.025 * u, lineCap: .round))
-        var boltCore = Path(), boltHalo = Path()
-        GlowPath.addCircle(&boltCore, bolt, 0.025 * u)
-        GlowPath.addCircle(&boltHalo, bolt, 0.025 * u * Theme.glowSoft.haloWidth)
-        GlowPath.fill(core: boltCore, halo: boltHalo, in: &context, color: Theme.lfBolt, style: Theme.glowSoft)
+        GlowPath.fillCircles([bolt], radius: 0.025 * u, in: &context, color: Theme.lfBolt, style: Theme.glowSoft)
 
         // The hero with its lantern halo and heading tick
-        var heroCore = Path(), heroHalo = Path()
-        GlowPath.addCircle(&heroCore, hero, 0.07 * u)
-        GlowPath.addCircle(&heroHalo, hero, 0.07 * u * Theme.glowStandard.haloWidth)
-        GlowPath.fill(core: heroCore, halo: heroHalo, in: &context, color: Theme.lfHero,
-                      haloColor: Theme.lanternfallAccent, style: Theme.glowStandard)
+        GlowPath.fillCircles([hero], radius: 0.07 * u, in: &context, color: Theme.lfHero,
+                             haloColor: Theme.lanternfallAccent, style: Theme.glowStandard)
         var tick = Path()
         tick.move(to: CGPoint(x: hero.x + 0.07 * u, y: hero.y))
         tick.addLine(to: CGPoint(x: hero.x + 0.13 * u, y: hero.y))

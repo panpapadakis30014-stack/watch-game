@@ -5,9 +5,10 @@ import FXCore
 /// Draws the arena from a `Game` snapshot. Stateless: everything it shows is
 /// passed in, and effect timing uses game time so it freezes with the game.
 ///
-/// Budget: ≤ 36 calls, 1 gradient (worst case ≈ 26: ring 2, shield track 1,
+/// Budget: ≤ 36 calls, 1 gradient (worst case 28: ring 2, shield track 1,
 /// reduce-motion pulse fill 1, core glow 1, core 1, tails 1, shards 2,
-/// shield 3, pulse ring 2, particles ≤ 12). No blur, shadow or filters.
+/// shield 4, pulse ring 3, particles ≤ 12). Halos are additive
+/// (.plusLighter); no blur, shadow or filters.
 struct ArenaCanvas: View {
     let game: Game
     let effects: [GameController.Effect]
@@ -89,16 +90,16 @@ struct ArenaCanvas: View {
 
         // 4. Shards with a tail pointing back the way they came, glowing
         let shardR = shardScale * radius
-        var tails = Path(), heads = Path(), halos = Path()
+        var tails = Path()
+        var heads: [CGPoint] = []
         for shard in game.shards {
             let p = point(shard.angle, shard.distance)
             tails.move(to: p)
             tails.addLine(to: point(shard.angle, min(shard.distance + Self.tailLength, tuning.spawnRadius)))
-            GlowPath.addCircle(&heads, p, shardR)
-            GlowPath.addCircle(&halos, p, shardR * Theme.glowSoft.haloWidth)
+            heads.append(p)
         }
         context.stroke(tails, with: .color(Theme.shard.opacity(0.5)), style: StrokeStyle(lineWidth: shardR, lineCap: .round))
-        GlowPath.fill(core: heads, halo: halos, in: &context, color: Theme.shard, style: Theme.glowSoft)
+        GlowPath.fillCircles(heads, radius: shardR, in: &context, color: Theme.shard, style: Theme.glowSoft)
 
         // 5. Shield: a polyline rather than addArc, which avoids the clockwise
         // flag being inverted in SwiftUI's y-down coordinates.

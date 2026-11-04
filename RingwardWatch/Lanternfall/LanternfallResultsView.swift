@@ -52,18 +52,15 @@ struct LanternfallResultsView: View {
                 .buttonStyle(PrimaryButtonStyle(accent: Theme.lanternfallAccent))
                 .disabled(!armed)
                 .accessibilityLabel("Play again")
-                if model.exitToPicker != nil {
-                    Button {
-                        model.leaveToPicker()
-                    } label: {
-                        Text("Games")
-                    }
-                    .buttonStyle(SecondaryButtonStyle(accent: Theme.lanternfallAccent))
-                    .disabled(!armed)
-                    .accessibilityLabel("Back to games")
-                }
             }
             .padding(.horizontal, 4)
+        }
+        .overlay(alignment: .topLeading) {
+            if model.exitToPicker != nil {
+                GamesBackButton(accent: Theme.lanternfallAccent) { model.leaveToPicker() }
+                    .disabled(!armed)
+                    .ignoresSafeArea(edges: .top)
+            }
         }
         .task {
             try? await Task.sleep(for: .seconds(Theme.retryArmDelay))

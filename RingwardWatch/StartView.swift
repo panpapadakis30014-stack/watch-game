@@ -28,17 +28,14 @@ struct StartView: View {
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                 }
-                if model.exitToPicker != nil {
-                    Button {
-                        model.leaveToPicker()
-                    } label: {
-                        Text("Games")
-                    }
-                    .buttonStyle(SecondaryButtonStyle(accent: Theme.ringwardAccent))
-                    .accessibilityLabel("Back to games")
-                }
             }
             .padding(.horizontal, 4)
+        }
+        .overlay(alignment: .topLeading) {
+            if model.exitToPicker != nil {
+                GamesBackButton(accent: Theme.ringwardAccent) { model.leaveToPicker() }
+                    .ignoresSafeArea(edges: .top)
+            }
         }
     }
 }

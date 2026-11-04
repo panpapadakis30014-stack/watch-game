@@ -36,18 +36,15 @@ struct GameOverView: View {
                 .buttonStyle(PrimaryButtonStyle(accent: Theme.ringwardAccent))
                 .disabled(!armed)
                 .accessibilityLabel("Tap to retry")
-                if model.exitToPicker != nil {
-                    Button {
-                        model.leaveToPicker()
-                    } label: {
-                        Text("Games")
-                    }
-                    .buttonStyle(SecondaryButtonStyle(accent: Theme.ringwardAccent))
-                    .disabled(!armed)
-                    .accessibilityLabel("Back to games")
-                }
             }
             .padding(.horizontal, 4)
+        }
+        .overlay(alignment: .topLeading) {
+            if model.exitToPicker != nil {
+                GamesBackButton(accent: Theme.ringwardAccent) { model.leaveToPicker() }
+                    .disabled(!armed)
+                    .ignoresSafeArea(edges: .top)
+            }
         }
         .task {
             try? await Task.sleep(for: .seconds(Theme.retryArmDelay))

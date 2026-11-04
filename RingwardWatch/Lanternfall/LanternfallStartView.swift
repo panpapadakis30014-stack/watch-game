@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Kept compact (34 pt buttons, tight spacing, caption-size hint) so the
-/// "Games" button is on screen at 40mm.
+/// Compact (34 pt button, tight spacing, caption-size hint) so everything fits
+/// at 40mm; "‹ Games" sits in the top-left status-bar row.
 struct LanternfallStartView: View {
     @Environment(LanternfallModel.self) private var model
 
@@ -39,17 +39,14 @@ struct LanternfallStartView: View {
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                 }
-                if model.exitToPicker != nil {
-                    Button {
-                        model.leaveToPicker()
-                    } label: {
-                        Text("Games")
-                    }
-                    .buttonStyle(SecondaryButtonStyle(accent: Theme.lanternfallAccent))
-                    .accessibilityLabel("Back to games")
-                }
             }
             .padding(.horizontal, 4)
+        }
+        .overlay(alignment: .topLeading) {
+            if model.exitToPicker != nil {
+                GamesBackButton(accent: Theme.lanternfallAccent) { model.leaveToPicker() }
+                    .ignoresSafeArea(edges: .top)
+            }
         }
     }
 }

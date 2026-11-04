@@ -7,10 +7,11 @@ import FXCore
 /// freezes with the game. The hero is always drawn at the centre; the world
 /// scrolls under it. The night background shows through (drawn by the hub).
 ///
-/// Budget: ≤ 64 calls, 1 gradient (worst case ≈ 53: grid 1, lantern glow 1,
-/// gems 6, salt 2, enemies 7, embers 2, bolts 3, sparks 4, hero 4, puffs 1,
-/// arrow 1, hurt tint 1, particles ≤ 20). One Path per colour; no blur,
-/// shadow or filters.
+/// Budget: ≤ 64 calls, 1 gradient (worst case 58: grid 1, lantern glow 1,
+/// gems 6, salt 3, enemies 7, embers 2, bolt trails 1, bolts 3, sparks 6,
+/// hero 3 + tick 1 + dash ring 1, puffs 1, arrow 1, hurt tint 1,
+/// particles ≤ 20). One Path per colour; halos are additive (.plusLighter);
+/// no blur, shadow or filters.
 struct LanternfallCanvas: View {
     let game: HordeGame
     let particles: ParticleSystem
@@ -98,16 +99,15 @@ struct LanternfallCanvas: View {
         context.fill(glow, with: .radialGradient(Theme.lanternGlowGradient, center: centre, startRadius: 0, endRadius: glowR))
 
         // 3. Gems in three tiers, softly glowing
-        var gemCores = [Path(), Path(), Path()], gemHalos = [Path(), Path(), Path()]
+        var gemCentres: [[CGPoint]] = [[], [], []]
         for gem in game.gems where visible(gem.position, margin: 0.1) {
             let tier = gem.value >= 5 ? 2 : (gem.value >= 2 ? 1 : 0)
-            let p = screen(gem.position)
-            let r = Self.gemRadius(gem.value) * unit
-            addDisc(&gemCores[tier], p, r)
-            addDisc(&gemHalos[tier], p, r * Double(Theme.glowSoft.haloWidth))
+            gemCentres[tier].append(screen(gem.position))
         }
         for (tier, colour) in [Theme.lfGemSmall, Theme.lfGemMedium, Theme.lfGemLarge].enumerated() {
-            GlowPath.fill(core: gemCores[tier], halo: gemHalos[tier], in: &context, color: colour, style: Theme.glowSoft)
+            let value = [1, 2, 5][tier]
+            GlowPath.fillCircles(gemCentres[tier], radius: Self.gemRadius(value) * unit, in: &context,
+                                 color: colour, style: Theme.glowSoft)
         }
 
         // 4. Salt rings: an expanding glowing ring, or a static fill under Reduce Motion
@@ -166,29 +166,25 @@ struct LanternfallCanvas: View {
 
         // 6. Embers
         let stats = game.stats
-        var embers = Path(), emberHalos = Path()
-        for i in 0..<stats.emberCount {
-            let p = screen(game.emberPosition(i))
-            addDisc(&embers, p, tuning.emberRadius * unit)
-            addDisc(&emberHalos, p, tuning.emberRadius * unit * Double(Theme.glowSoft.haloWidth))
-        }
-        GlowPath.fill(core: embers, halo: emberHalos, in: &context, color: Theme.lfEmber, style: Theme.glowSoft)
+        let embers = (0..<stats.emberCount).map { screen(game.emberPosition($0)) }
+        GlowPath.fillCircles(embers, radius: tuning.emberRadius * unit, in: &context, color: Theme.lfEmber, style: Theme.glowSoft)
 
         // 7. Lantern bolts: trails (motion, so not under Reduce Motion), then glowing heads
-        var trails = Path(), bolts = Path(), boltHalos = Path()
+        var trails = Path()
+        var bolts: [CGPoint] = []
         for proj in game.projectiles where visible(proj.position, margin: 0.2) {
             let p = screen(proj.position)
             if !reduceMotion {
                 trails.move(to: p)
                 trails.addLine(to: screen(proj.position - proj.velocity * Self.projectileTrail))
             }
-            addDisc(&bolts, p, tuning.projectileRadius * unit)
-            addDisc(&boltHalos, p, tuning.projectileRadius * unit * Double(Theme.glowStandard.haloWidth))
+            bolts.append(p)
         }
         if !trails.isEmpty {
             context.stroke(trails, with: .color(Theme.lfBolt.opacity(0.6)), style: StrokeStyle(lineWidth: unit * 0.02, lineCap: .round))
         }
-        GlowPath.fill(core: bolts, halo: boltHalos, in: &context, color: Theme.lfBolt, style: Theme.glowStandard)
+        GlowPath.fillCircles(bolts, radius: tuning.projectileRadius * unit, in: &context, color: Theme.lfBolt,
+                             style: Theme.glowStandard)
 
         // 8. Chain sparks, in two fade steps
         var freshSparks = Path(), fadingSparks = Path()
@@ -216,11 +212,8 @@ struct LanternfallCanvas: View {
                 heroOpacity = Int(game.hero.iFrames / Self.iFrameBlink) % 2 == 0 ? 1 : 0.35
             }
         }
-        var heroCore = Path(), heroHalo = Path()
-        addDisc(&heroCore, centre, tuning.heroRadius * unit)
-        addDisc(&heroHalo, centre, tuning.heroRadius * unit * Double(Theme.glowStrong.haloWidth))
-        GlowPath.fill(core: heroCore, halo: heroHalo, in: &context, color: Theme.lfHero.opacity(heroOpacity),
-                      haloColor: Theme.lanternfallAccent, style: Theme.glowStrong)
+        GlowPath.fillCircles([centre], radius: tuning.heroRadius * unit, in: &context, color: Theme.lfHero.opacity(heroOpacity),
+                             haloColor: Theme.lanternfallAccent, style: Theme.glowStrong)
         let heading = HordeMath.direction(degrees: game.hero.heading)
         var tick = Path()
         tick.move(to: CGPoint(x: cx + heading.x * tuning.heroRadius * unit, y: cy + heading.y * tuning.heroRadius * unit))

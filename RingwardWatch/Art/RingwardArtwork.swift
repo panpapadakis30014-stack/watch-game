@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Ringward's picker illustration: the core, the shield arc blocking a shard,
-/// and a few shards on their way in. 10 draw calls, 1 gradient.
+/// and a few shards on their way in. 11 draw calls, 1 gradient.
 enum RingwardArtwork: GameArtwork {
     static func draw(in context: inout GraphicsContext, size: CGSize) {
         let u = size.height
@@ -34,17 +34,16 @@ enum RingwardArtwork: GameArtwork {
 
         // Shards with tails pointing back out
         let shards: [(CGFloat, CGFloat)] = [(320, 0.40), (75, 0.95), (110, 1.35), (250, 1.15)]
-        var heads = Path(), halos = Path(), tails = Path()
-        let r = 0.04 * u
+        var heads: [CGPoint] = []
+        var tails = Path()
         for (angle, d) in shards {
             let p = at(angle, d * u)
-            GlowPath.addCircle(&heads, p, r)
-            GlowPath.addCircle(&halos, p, r * Theme.glowSoft.haloWidth)
+            heads.append(p)
             tails.move(to: p)
             tails.addLine(to: at(angle, d * u + 0.12 * u))
         }
         context.stroke(tails, with: .color(Theme.shard.opacity(0.45)), style: StrokeStyle(lineWidth: 0.04 * u, lineCap: .round))
-        GlowPath.fill(core: heads, halo: halos, in: &context, color: Theme.shard, style: Theme.glowSoft)
+        GlowPath.fillCircles(heads, radius: 0.04 * u, in: &context, color: Theme.shard, style: Theme.glowSoft)
 
         // Block sparks off the shield
         var sparks = Path()
