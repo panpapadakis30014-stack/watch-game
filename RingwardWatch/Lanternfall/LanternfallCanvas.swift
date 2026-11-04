@@ -7,11 +7,12 @@ import FXCore
 /// freezes with the game. The hero is always drawn at the centre; the world
 /// scrolls under it. The night background shows through (drawn by the hub).
 ///
-/// Budget: ≤ 64 calls, 1 gradient (worst case 58: grid 1, lantern glow 1,
-/// gems 6, salt 3, enemies 7, embers 2, bolt trails 1, bolts 3, sparks 6,
-/// hero 3 + tick 1 + dash ring 1, puffs 1, arrow 1, hurt tint 1,
-/// particles ≤ 20). One Path per colour; halos are additive (.plusLighter);
-/// no blur, shadow or filters.
+/// Budget: ≤ 64 calls, 1 per-frame gradient (worst case 59: grid 1, lantern
+/// glow 1, gems 6, salt 3, enemies 7, ember sprites ≤ 4 + ember cores 1, bolt
+/// trails 1, bolts 2, sparks 6, hero sprite 1 + core 1 + tick 1 + dash ring 1,
+/// puffs 1, arrow 1, hurt tint 1, particles ≤ 20). Ember and hero glows are
+/// GlowSprite symbols (rendered once, not per frame); one Path per colour;
+/// halos are additive (.plusLighter); no blur, shadow or filters.
 struct LanternfallCanvas: View {
     let game: HordeGame
     let particles: ParticleSystem
@@ -31,10 +32,15 @@ struct LanternfallCanvas: View {
     private static let reducedSaltDuration = 0.2
     private static let wardenHaloScale = 1.6
     private static let wardenHaloOpacity = 0.2
+    private static let emberSprite = 0              // GlowSprite symbol tags
+    private static let heroSprite = 1
 
     var body: some View {
         Canvas { context, size in
             draw(in: &context, size: size)
+        } symbols: {
+            GlowSprite.view(Theme.lfEmber).tag(Self.emberSprite)
+            GlowSprite.view(Theme.lanternfallAccent).tag(Self.heroSprite)
         }
         .accessibilityElement()
         .accessibilityLabel("Graveyard")
@@ -167,7 +173,17 @@ struct LanternfallCanvas: View {
         // 6. Embers
         let stats = game.stats
         let embers = (0..<stats.emberCount).map { screen(game.emberPosition($0)) }
-        GlowPath.fillCircles(embers, radius: tuning.emberRadius * unit, in: &context, color: Theme.lfEmber, style: Theme.glowSoft)
+        let emberR = CGFloat(tuning.emberRadius * unit)
+        var emberCores = Path()
+        for p in embers.prefix(Theme.maxSpritesPerFrame - 1) {   // one sprite is kept for the hero
+            GlowSprite.draw(Self.emberSprite, at: p, radius: emberR * Theme.spriteGlowRatio, in: &context)
+        }
+        for p in embers {
+            GlowPath.addCircle(&emberCores, p, emberR)
+        }
+        if !emberCores.isEmpty {
+            context.fill(emberCores, with: .color(Theme.lfEmber))
+        }
 
         // 7. Lantern bolts: trails (motion, so not under Reduce Motion), then glowing heads
         var trails = Path()
@@ -184,7 +200,7 @@ struct LanternfallCanvas: View {
             context.stroke(trails, with: .color(Theme.lfBolt.opacity(0.6)), style: StrokeStyle(lineWidth: unit * 0.02, lineCap: .round))
         }
         GlowPath.fillCircles(bolts, radius: tuning.projectileRadius * unit, in: &context, color: Theme.lfBolt,
-                             style: Theme.glowStandard)
+                             style: Theme.glowSoft)
 
         // 8. Chain sparks, in two fade steps
         var freshSparks = Path(), fadingSparks = Path()
@@ -212,8 +228,13 @@ struct LanternfallCanvas: View {
                 heroOpacity = Int(game.hero.iFrames / Self.iFrameBlink) % 2 == 0 ? 1 : 0.35
             }
         }
-        GlowPath.fillCircles([centre], radius: tuning.heroRadius * unit, in: &context, color: Theme.lfHero.opacity(heroOpacity),
-                             haloColor: Theme.lanternfallAccent, style: Theme.glowStrong)
+        let heroR = CGFloat(tuning.heroRadius * unit)
+        context.opacity = heroOpacity
+        GlowSprite.draw(Self.heroSprite, at: centre, radius: heroR * Theme.spriteGlowRatio, in: &context)
+        context.opacity = 1
+        var heroCore = Path()
+        GlowPath.addCircle(&heroCore, centre, heroR)
+        context.fill(heroCore, with: .color(Theme.lfHero.opacity(heroOpacity)))
         let heading = HordeMath.direction(degrees: game.hero.heading)
         var tick = Path()
         tick.move(to: CGPoint(x: cx + heading.x * tuning.heroRadius * unit, y: cy + heading.y * tuning.heroRadius * unit))

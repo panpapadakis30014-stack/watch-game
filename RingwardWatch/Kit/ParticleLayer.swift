@@ -8,8 +8,8 @@ import FXCore
 /// palette are skipped.
 enum ParticleLayer {
     private static let bucketOpacity: [Double] = [1, 0.6, 0.3]
-    private static let haloScale: CGFloat = 2.0
-    private static let haloOpacity = 0.22
+    private static let haloScale: CGFloat = 1.4
+    private static let haloOpacity = 0.25
 
     static func draw(_ system: ParticleSystem, in context: inout GraphicsContext, palette: [Color],
                      scale: CGFloat, map: (FXVec) -> CGPoint) {

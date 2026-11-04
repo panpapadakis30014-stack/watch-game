@@ -1,10 +1,16 @@
 import SwiftUI
 
-/// Glow by layering, not by blur: up to two translucent halos drawn with
-/// additive blending (.plusLighter, so they add light instead of tinting),
-/// then the crisp core and an optional thin white hot line in normal blending.
+/// Glow by layering, not by blur: translucent halos drawn with additive
+/// blending (.plusLighter, so they add light instead of tinting), then the
+/// crisp core and an optional thin white hot line in normal blending.
 /// Callers batch every same-coloured shape into one call, so each colour
 /// costs a fixed 2–4 draw calls.
+///
+/// Rule for every game: a point light with at most `Theme.maxSpritesPerFrame`
+/// (16) instances per frame — shards, embers, the hero, sparks, a ball, a
+/// cup, lamps, sources — uses `GlowSprite` (a smooth radial falloff), never a
+/// flat fill halo. `fillCircles` is only for small, numerous fills (gems,
+/// bolts) and keeps its halo tight.
 enum GlowPath {
     static func addCircle(_ path: inout Path, _ centre: CGPoint, _ radius: CGFloat) {
         path.addEllipse(in: CGRect(x: centre.x - radius, y: centre.y - radius, width: 2 * radius, height: 2 * radius))
@@ -29,26 +35,18 @@ enum GlowPath {
         }
     }
 
-    /// Glowing discs of one radius: builds the halo and core Paths itself and
-    /// fills outer halo, inner halo, core. 2–3 calls for any number of discs.
+    /// Small glowing discs of one radius: one tight additive halo, then the
+    /// core. 2 calls for any number of discs.
     static func fillCircles(_ centres: [CGPoint], radius: CGFloat, in context: inout GraphicsContext, color: Color,
                             haloColor: Color? = nil, style: GlowStyle = Theme.glowSoft) {
         guard !centres.isEmpty else { return }
-        var core = Path(), inner = Path(), outer = Path()
-        let hasOuter = style.outerOpacity > 0 && style.outerWidth > 0
+        var core = Path(), halo = Path()
         for c in centres {
             addCircle(&core, c, radius)
-            addCircle(&inner, c, radius * style.haloWidth)
-            if hasOuter {
-                addCircle(&outer, c, radius * style.outerWidth)
-            }
+            addCircle(&halo, c, radius * style.fillHaloWidth)
         }
-        let halo = haloColor ?? color
         context.blendMode = .plusLighter
-        if hasOuter {
-            context.fill(outer, with: .color(halo.opacity(style.outerOpacity)))
-        }
-        context.fill(inner, with: .color(halo.opacity(style.haloOpacity)))
+        context.fill(halo, with: .color((haloColor ?? color).opacity(style.fillHaloOpacity)))
         context.blendMode = .normal
         context.fill(core, with: .color(color))
     }

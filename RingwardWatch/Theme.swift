@@ -11,15 +11,18 @@ struct GameAccent {
     }
 }
 
-/// Glow without blur filters: up to two additive (plusLighter) halos under
-/// the crisp core, plus an optional thin white "hot" line on top.
+/// Glow without blur filters. Strokes: up to two additive (plusLighter)
+/// halos under the crisp core, plus an optional thin white "hot" line.
+/// Small fills: one tight additive halo. Point lights use GlowSprite instead.
 struct GlowStyle {
-    let haloWidth: CGFloat      // inner halo, × the core width (strokes) or radius (fills)
+    let haloWidth: CGFloat      // stroke inner halo, × the core width
     let haloOpacity: Double
-    let outerWidth: CGFloat     // outer halo, same units; 0 = no outer layer
+    let outerWidth: CGFloat     // stroke outer halo, × the core width; 0 = no outer layer
     let outerOpacity: Double
     let hotWidth: CGFloat       // × the core width; 0 = no hot line
     let hotOpacity: Double
+    let fillHaloWidth: CGFloat  // fill halo, × the disc radius
+    let fillHaloOpacity: Double
 }
 
 /// Theme v2: the night palette, game accents, glow styles, type roles and
@@ -129,11 +132,13 @@ enum Theme {
 
     // Glow
     static let glowSoft = GlowStyle(haloWidth: 1.8, haloOpacity: 0.28, outerWidth: 0, outerOpacity: 0,
-                                    hotWidth: 0, hotOpacity: 0)
+                                    hotWidth: 0, hotOpacity: 0, fillHaloWidth: 1.35, fillHaloOpacity: 0.35)
     static let glowStandard = GlowStyle(haloWidth: 1.8, haloOpacity: 0.30, outerWidth: 2.8, outerOpacity: 0.10,
-                                        hotWidth: 0, hotOpacity: 0)
+                                        hotWidth: 0, hotOpacity: 0, fillHaloWidth: 1.35, fillHaloOpacity: 0.35)
     static let glowStrong = GlowStyle(haloWidth: 1.9, haloOpacity: 0.34, outerWidth: 3.0, outerOpacity: 0.12,
-                                      hotWidth: 0.35, hotOpacity: 0.6)
+                                      hotWidth: 0.35, hotOpacity: 0.6, fillHaloWidth: 1.35, fillHaloOpacity: 0.35)
+    static let spriteGlowRatio: CGFloat = 2.6        // GlowSprite radius × the core radius
+    static let maxSpritesPerFrame = 16
     static let coreGlowGradient = Gradient(colors: [shield.opacity(0.45), shield.opacity(0)])
     static let lanternGlowGradient = Gradient(colors: [lfLantern.opacity(0.22), lfLantern.opacity(0)])
 

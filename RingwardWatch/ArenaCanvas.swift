@@ -5,10 +5,11 @@ import FXCore
 /// Draws the arena from a `Game` snapshot. Stateless: everything it shows is
 /// passed in, and effect timing uses game time so it freezes with the game.
 ///
-/// Budget: ≤ 36 calls, 1 gradient (worst case 28: ring 2, shield track 1,
-/// reduce-motion pulse fill 1, core glow 1, core 1, tails 1, shards 2,
-/// shield 4, pulse ring 3, particles ≤ 12). Halos are additive
-/// (.plusLighter); no blur, shadow or filters.
+/// Budget: ≤ 36 calls, 1 per-frame gradient (worst case 33: ring 2, shield
+/// track 1, reduce-motion pulse fill 1, core glow 1, core 1, tails 1, shard
+/// sprites ≤ 6 + shard cores 1, shield 4, pulse ring 3, particles ≤ 12).
+/// Shard glows are GlowSprite symbols (rendered once, not per frame); halos
+/// are additive (.plusLighter); no blur, shadow or filters.
 struct ArenaCanvas: View {
     let game: Game
     let effects: [GameController.Effect]
@@ -30,10 +31,13 @@ struct ArenaCanvas: View {
     private static let trackOpacity = 0.12
     private static let coreGlowScale = 2.4          // × coreRadius
     private static let pulseRingWidth = 0.04        // × arena radius
+    private static let shardSprite = 0              // GlowSprite symbol tag
 
     var body: some View {
         Canvas { context, size in
             draw(in: &context, size: size)
+        } symbols: {
+            GlowSprite.view(Theme.shard).tag(Self.shardSprite)
         }
         .accessibilityElement()
         .accessibilityLabel("Arena")
@@ -98,8 +102,16 @@ struct ArenaCanvas: View {
             tails.addLine(to: point(shard.angle, min(shard.distance + Self.tailLength, tuning.spawnRadius)))
             heads.append(p)
         }
+        let spriteR = CGFloat(shardR) * Theme.spriteGlowRatio
+        for p in heads.prefix(Theme.maxSpritesPerFrame) {
+            GlowSprite.draw(Self.shardSprite, at: p, radius: spriteR, in: &context)
+        }
         context.stroke(tails, with: .color(Theme.shard.opacity(0.5)), style: StrokeStyle(lineWidth: shardR, lineCap: .round))
-        GlowPath.fillCircles(heads, radius: shardR, in: &context, color: Theme.shard, style: Theme.glowSoft)
+        var shardCores = Path()
+        for p in heads {
+            GlowPath.addCircle(&shardCores, p, CGFloat(shardR))
+        }
+        context.fill(shardCores, with: .color(Theme.shard))
 
         // 5. Shield: a polyline rather than addArc, which avoids the clockwise
         // flag being inverted in SwiftUI's y-down coordinates.
