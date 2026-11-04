@@ -52,6 +52,13 @@ jobs:
           BAD="$(grep -rn '^import' GameCore/Sources/HordeCore | grep -v ':import GameCore$' || true)"
           [ -z "$BAD" ] || { echo "::error::HordeCore may only import GameCore: $BAD"; exit 1; }
           if grep -rnE 'SystemRandomNumberGenerator|\.random\(' GameCore/Sources; then echo "::error::Game logic must use SplitMix64"; exit 1; fi
+          # Visuals: FXCore only imports GameCore; no blur/shadow/filters (frame
+          # budget); raw colours only in Theme.swift; WCAG contrast of Theme colours.
+          BAD="$(grep -rn '^import' GameCore/Sources/FXCore | grep -v ':import GameCore$' || true)"
+          [ -z "$BAD" ] || { echo "::error::FXCore may only import GameCore: $BAD"; exit 1; }
+          if grep -rnE '\.blur\(|\.shadow\(|addFilter|drawingGroup' RingwardWatch; then echo "::error::No blur, shadow or filter effects (frame budget)"; exit 1; fi
+          if grep -rn 'Color(red' RingwardWatch | grep -v '^RingwardWatch/Theme.swift:'; then echo "::error::Raw colours belong in Theme.swift"; exit 1; fi
+          python3 -I scripts/contrast.py RingwardWatch/Theme.swift
 
       - name: Install XcodeGen
         run: |

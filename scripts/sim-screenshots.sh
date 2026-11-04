@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the watch app for the simulator and saves real screenshots of
-# Ringward (start, mid-game), the game picker and Lanternfall (start,
-# mid-game, level-up) on Apple Watch SE 40mm and 44mm (2nd generation), all
-# from seeded demo states. A missing runtime or device type is logged and
+# Ringward (start, mid-game), the game picker (top and scrolled to the
+# bottom) and Lanternfall (start, mid-game, level-up) on Apple Watch SE 40mm
+# and 44mm (2nd generation), all from seeded demo states. A missing runtime or device type is logged and
 # skipped; build, install and launch failures fail the step.
 set -euo pipefail
 
@@ -51,12 +51,18 @@ for entry in "se40|Apple Watch SE (40mm) (2nd generation)" "se44|Apple Watch SE 
     sleep 8
     xcrun simctl io "$UDID" screenshot "shots/$slug-$mode.png"
   done
-  for mode in picker start midgame levelup; do
+  for mode in top bottom; do
+    xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+    xcrun simctl launch "$UDID" "$BUNDLE_ID" -PickerDemo "$mode"
+    sleep 8
+    if [ "$mode" = top ]; then out="shots/$slug-picker.png"; else out="shots/$slug-picker-bottom.png"; fi
+    xcrun simctl io "$UDID" screenshot "$out"
+  done
+  for mode in start midgame levelup; do
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
     xcrun simctl launch "$UDID" "$BUNDLE_ID" -LanternfallDemo "$mode"
     sleep 8
-    if [ "$mode" = picker ]; then out="shots/$slug-picker.png"; else out="shots/$slug-lanternfall-$mode.png"; fi
-    xcrun simctl io "$UDID" screenshot "$out"
+    xcrun simctl io "$UDID" screenshot "shots/$slug-lanternfall-$mode.png"
   done
   xcrun simctl shutdown "$UDID"
   xcrun simctl delete "$UDID"

@@ -18,6 +18,8 @@ How it is built:
 
 The watch app opens on a game picker with two buttons, **Ringward** and **Lanternfall**, each showing your best result. Tap one to open it; if the list does not fit, turn the Crown to scroll. The start and end screens of both games have a **Games** button that brings you back to the picker.
 
+The app uses a night theme with glowing game pieces and short bursts of particles. With Reduce Motion on, the particles, screen shake and zoom animations are turned off.
+
 ### Ringward
 
 Turn the Digital Crown to swing the shield and block the shards. When the Pulse meter is full, tap anywhere to clear the screen. A shard that gets past costs one of 3 lives. The button in the top-left corner pauses.
@@ -82,7 +84,7 @@ When the "build" run is green:
   ~/.local/bin/gh run download --name ringward-screenshots --dir ~/Downloads/ringward-shots
   ```
 
-`ringward-screenshots` contains `se40-` and `se44-` versions of `start`, `midgame`, `picker`, `lanternfall-start`, `lanternfall-midgame` and `lanternfall-levelup`.
+`ringward-screenshots` contains `se40-` and `se44-` versions of `start`, `midgame`, `picker`, `picker-bottom`, `lanternfall-start`, `lanternfall-midgame` and `lanternfall-levelup`.
 
 If the screenshot artifact is missing, the run log of the "Simulator screenshots" step says why (a missing Apple Watch SE simulator is logged as a warning and skipped, never faked).
 
