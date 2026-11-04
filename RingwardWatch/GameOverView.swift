@@ -12,19 +12,19 @@ struct GameOverView: View {
         CenteredScroll {
             VStack(spacing: 6) {
                 Text("Game over")
-                    .font(.title3)
-                    .foregroundStyle(.white)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(Theme.hudPrimary)
                 Text("Score \(result.score)")
-                    .font(.title2.monospacedDigit())
-                    .foregroundStyle(.white)
+                    .font(Theme.resultFont)
+                    .foregroundStyle(Theme.hudPrimary)
                     .accessibilityLabel("Score \(result.score)")
                 Text("Best \(result.best)")
-                    .font(.headline.monospacedDigit())
+                    .font(Theme.hudValueFont)
                     .foregroundStyle(Theme.secondaryText)
                     .accessibilityLabel("Best score \(result.best)")
                 if result.isNewBest {
                     Text("New best!")
-                        .font(.headline)
+                        .font(Theme.hudValueFont)
                         .foregroundStyle(Theme.pulse)
                         .accessibilityLabel("New best score")
                 }
@@ -32,10 +32,8 @@ struct GameOverView: View {
                     model.retry()
                 } label: {
                     Text("Tap to retry")
-                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.shield)
+                .buttonStyle(PrimaryButtonStyle(accent: Theme.ringwardAccent))
                 .disabled(!armed)
                 .accessibilityLabel("Tap to retry")
                 if model.exitToPicker != nil {
@@ -44,7 +42,7 @@ struct GameOverView: View {
                     } label: {
                         Text("Games")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryButtonStyle(accent: Theme.ringwardAccent))
                     .disabled(!armed)
                     .accessibilityLabel("Back to games")
                 }

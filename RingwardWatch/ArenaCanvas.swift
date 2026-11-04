@@ -1,19 +1,22 @@
 import SwiftUI
 import GameCore
+import FXCore
 
 /// Draws the arena from a `Game` snapshot. Stateless: everything it shows is
 /// passed in, and effect timing uses game time so it freezes with the game.
+///
+/// Budget: ≤ 36 calls, 1 gradient (worst case ≈ 26: ring 2, shield track 1,
+/// reduce-motion pulse fill 1, core glow 1, core 1, tails 1, shards 2,
+/// shield 3, pulse ring 2, particles ≤ 12). No blur, shadow or filters.
 struct ArenaCanvas: View {
     let game: Game
     let effects: [GameController.Effect]
+    let particles: ParticleSystem
     let reduceMotion: Bool
     let now: Double
     let lastHitTime: Double?
 
-    // Visual-only timings (gameplay timing lives in GameCore.Tuning).
-    private static let sparkDuration = 0.35
-    private static let sparkSpeed = 0.6             // arena radii per second
-    private static let sparkOffsets: [Double] = [-50, -30, -10, 10, 30, 50]
+    // Visual-only values (gameplay values live in GameCore.Tuning).
     private static let pulseRingDuration = 0.4
     private static let shakeDuration = 0.35
     private static let shakeAmplitude = 0.03        // of the arena side
@@ -21,6 +24,11 @@ struct ArenaCanvas: View {
     private static let pulseFillDuration = 0.2
     private static let shieldSegments = 16
     private static let tailLength = 0.06            // arena radii
+    private static let ringWidth: CGFloat = 1.5
+    private static let ringOpacity = 0.35
+    private static let trackOpacity = 0.12
+    private static let coreGlowScale = 2.4          // × coreRadius
+    private static let pulseRingWidth = 0.04        // × arena radius
 
     var body: some View {
         Canvas { context, size in
@@ -34,8 +42,10 @@ struct ArenaCanvas: View {
     private func draw(in context: inout GraphicsContext, size: CGSize) {
         let tuning = game.tuning
         let side = Double(min(size.width, size.height))
-        // Shrink slightly so a shard drawn on the spawn ring is never cropped.
-        let radius = side / 2 / (1 + tuning.shardVisualRadius)
+        // Drawn shards are bigger than the gameplay radius (visual only);
+        // shrink the arena so one drawn on the spawn ring is never cropped.
+        let shardScale = tuning.shardVisualRadius * Double(Theme.shardDrawScale)
+        let radius = side / 2 / (1 + shardScale)
         var cx = Double(size.width) / 2
         let cy = Double(size.height) / 2
 
@@ -47,6 +57,7 @@ struct ArenaCanvas: View {
         }
 
         let centreX = cx
+        let centre = CGPoint(x: centreX, y: cy)
         func point(_ degrees: Double, _ r: Double) -> CGPoint {
             let a = degrees * .pi / 180
             return CGPoint(x: centreX + r * radius * sin(a), y: cy - r * radius * cos(a))
@@ -56,46 +67,40 @@ struct ArenaCanvas: View {
                                    width: 2 * r * radius, height: 2 * r * radius))
         }
 
-        // Spawn ring
-        context.stroke(circle(tuning.spawnRadius), with: .color(Theme.ring), lineWidth: 1)
+        // 1. Spawn ring, softly glowing, and the static shield track
+        GlowPath.stroke(circle(tuning.spawnRadius), in: &context, color: Theme.ringwardAccent.opacity(Self.ringOpacity),
+                        width: Self.ringWidth, style: Theme.glowSoft)
+        context.stroke(circle(tuning.shieldRadius), with: .color(Theme.ringwardAccent.opacity(Self.trackOpacity)), lineWidth: 1)
 
-        // Reduce motion: a short static arena fill instead of the expanding Pulse ring.
-        if reduceMotion {
-            for effect in effects {
-                if case .pulseRing = effect.kind, now - effect.start < Self.pulseFillDuration {
-                    context.fill(circle(tuning.spawnRadius), with: .color(Theme.pulse.opacity(0.25)))
-                }
-            }
+        // 2. Reduce motion: a short static arena fill instead of the expanding Pulse ring
+        if reduceMotion, effects.contains(where: { if case .pulseRing = $0.kind { return now - $0.start < Self.pulseFillDuration } else { return false } }) {
+            context.fill(circle(tuning.spawnRadius), with: .color(Theme.pulse.opacity(0.25)))
         }
 
-        // Core
-        context.fill(circle(1.6 * tuning.coreRadius), with: .color(Theme.shield.opacity(0.25)))
+        // 3. Core glow (the frame's only gradient) and core
+        let glowR = Self.coreGlowScale * tuning.coreRadius * radius
+        context.fill(circle(Self.coreGlowScale * tuning.coreRadius),
+                     with: .radialGradient(Theme.coreGlowGradient, center: centre, startRadius: 0, endRadius: glowR))
         var coreColor = Theme.core
-        if reduceMotion {
-            for effect in effects {
-                if case .hitFlash = effect.kind, now - effect.start < Self.hitFlashDuration {
-                    coreColor = Theme.danger
-                }
-            }
+        if reduceMotion, effects.contains(where: { if case .hitFlash = $0.kind { return now - $0.start < Self.hitFlashDuration } else { return false } }) {
+            coreColor = Theme.danger
         }
         context.fill(circle(tuning.coreRadius), with: .color(coreColor))
 
-        // Shards, each with a short tail pointing back the way it came
-        let shardR = tuning.shardVisualRadius * radius
+        // 4. Shards with a tail pointing back the way they came, glowing
+        let shardR = shardScale * radius
+        var tails = Path(), heads = Path(), halos = Path()
         for shard in game.shards {
             let p = point(shard.angle, shard.distance)
-            let tailEnd = point(shard.angle, min(shard.distance + Self.tailLength, tuning.spawnRadius))
-            var tail = Path()
-            tail.move(to: p)
-            tail.addLine(to: tailEnd)
-            context.stroke(tail, with: .color(Theme.shard.opacity(0.5)),
-                           style: StrokeStyle(lineWidth: shardR, lineCap: .round))
-            context.fill(Path(ellipseIn: CGRect(x: Double(p.x) - shardR, y: Double(p.y) - shardR,
-                                                width: 2 * shardR, height: 2 * shardR)),
-                         with: .color(Theme.shard))
+            tails.move(to: p)
+            tails.addLine(to: point(shard.angle, min(shard.distance + Self.tailLength, tuning.spawnRadius)))
+            GlowPath.addCircle(&heads, p, shardR)
+            GlowPath.addCircle(&halos, p, shardR * Theme.glowSoft.haloWidth)
         }
+        context.stroke(tails, with: .color(Theme.shard.opacity(0.5)), style: StrokeStyle(lineWidth: shardR, lineCap: .round))
+        GlowPath.fill(core: heads, halo: halos, in: &context, color: Theme.shard, style: Theme.glowSoft)
 
-        // Shield: a polyline rather than addArc, which avoids the clockwise
+        // 5. Shield: a polyline rather than addArc, which avoids the clockwise
         // flag being inverted in SwiftUI's y-down coordinates.
         var shield = Path()
         let width = tuning.shieldArcWidth
@@ -108,36 +113,23 @@ struct ArenaCanvas: View {
                 shield.addLine(to: p)
             }
         }
-        context.stroke(shield, with: .color(Theme.shield),
-                       style: StrokeStyle(lineWidth: radius * Double(Theme.shieldLineRatio),
-                                          lineCap: .round, lineJoin: .round))
+        GlowPath.stroke(shield, in: &context, color: Theme.ringwardAccent,
+                        width: radius * Double(Theme.shieldLineRatio), style: Theme.glowStrong)
 
-        // Motion effects
+        // 6. Motion effects: the newest Pulse ring, then particles
         guard !reduceMotion else { return }
-        for effect in effects {
-            let age = now - effect.start
-            guard age >= 0 else { continue }
-            switch effect.kind {
-            case .spark(let angle):
-                guard age < Self.sparkDuration else { continue }
-                let fade = 1 - age / Self.sparkDuration
-                let r = tuning.shieldRadius + Self.sparkSpeed * age
-                let dotR = shardR * 0.6
-                for offset in Self.sparkOffsets {
-                    let p = point(angle + offset, r)
-                    context.fill(Path(ellipseIn: CGRect(x: Double(p.x) - dotR, y: Double(p.y) - dotR,
-                                                        width: 2 * dotR, height: 2 * dotR)),
-                                 with: .color(Theme.shield.opacity(fade)))
-                }
-            case .pulseRing:
-                guard age < Self.pulseRingDuration else { continue }
+        if let ring = effects.last(where: { if case .pulseRing = $0.kind { return true } else { return false } }) {
+            let age = now - ring.start
+            if age >= 0 && age < Self.pulseRingDuration {
                 let t = age / Self.pulseRingDuration
                 let r = tuning.coreRadius + (tuning.spawnRadius - tuning.coreRadius) * t
-                context.stroke(circle(r), with: .color(Theme.pulse.opacity(1 - t)),
-                               lineWidth: radius * 0.04)
-            case .hitFlash:
-                break   // shown as the screen shake above; the core flash is the reduce-motion form
+                GlowPath.stroke(circle(r), in: &context, color: Theme.pulse.opacity(1 - t),
+                                width: radius * Self.pulseRingWidth, style: Theme.glowStandard)
             }
+        }
+        ParticleLayer.draw(particles, in: &context, palette: [Theme.shield, Theme.shard, Theme.pulse],
+                           scale: radius) { v in
+            CGPoint(x: centreX + v.x * radius, y: cy + v.y * radius)
         }
     }
 }

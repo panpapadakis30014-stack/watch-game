@@ -11,10 +11,10 @@ struct PauseOverlay: View {
                     .ignoresSafeArea()
                 VStack(spacing: 4) {
                     Text("Paused")
-                        .font(.title3)
-                        .foregroundStyle(.white)
+                        .font(Theme.titleFont)
+                        .foregroundStyle(Theme.hudPrimary)
                     Text("Tap to resume")
-                        .font(.footnote)
+                        .font(Theme.bodyFont)
                         .foregroundStyle(Theme.secondaryText)
                 }
             }

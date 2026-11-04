@@ -7,26 +7,24 @@ struct StartView: View {
         CenteredScroll {
             VStack(spacing: 8) {
                 Text("Ringward")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.shield)
+                    .font(Theme.titleFont)
+                    .foregroundStyle(Theme.ringwardAccent)
                 Text("Best \(model.best)")
-                    .font(.headline.monospacedDigit())
-                    .foregroundStyle(.white)
+                    .font(Theme.hudValueFont)
+                    .foregroundStyle(Theme.hudPrimary)
                     .accessibilityLabel("Best score \(model.best)")
                 Button {
                     model.startRound()
                 } label: {
                     Text("Tap to play")
-                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Theme.shield)
+                .buttonStyle(PrimaryButtonStyle(accent: Theme.ringwardAccent))
                 .accessibilityLabel("Tap to play")
                 if !model.hasPlayed {
-                    Text("Turn the Crown to swing your shield.")
-                        .font(.footnote)
+                    Text("Turn the Crown to swing your shield. Tap when the Pulse is full.")
+                        .font(Theme.bodyFont)
                         .foregroundStyle(Theme.secondaryText)
-                        .lineLimit(2)
+                        .lineLimit(3)
                         .minimumScaleFactor(0.8)
                         .multilineTextAlignment(.center)
                 }
@@ -36,7 +34,7 @@ struct StartView: View {
                     } label: {
                         Text("Games")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(SecondaryButtonStyle(accent: Theme.ringwardAccent))
                     .accessibilityLabel("Back to games")
                 }
             }

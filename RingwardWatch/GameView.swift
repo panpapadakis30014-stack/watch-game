@@ -50,6 +50,9 @@ struct GameView: View {
             .onAppear {
                 crownFocused = true
             }
+            .onChange(of: reduceMotion, initial: true) { _, reduce in
+                controller.setReduceMotion(reduce)
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active {
                     controller.pause()
@@ -70,6 +73,7 @@ struct GameView: View {
             ArenaCanvas(
                 game: controller.game,
                 effects: controller.effects,
+                particles: controller.fx,
                 reduceMotion: reduceMotion,
                 now: controller.game.elapsed,
                 lastHitTime: controller.lastHitTime
@@ -87,7 +91,7 @@ struct GameView: View {
         Color.clear
             .frame(width: size.width, height: size.height)
             .overlay(alignment: .topLeading) { pauseButton(size: size) }
-            .overlay(alignment: .topTrailing) { scoreView(game: game) }
+            .overlay(alignment: .topTrailing) { scoreView(game: game, size: size) }
             .overlay(alignment: .bottomLeading) { livesView(game: game) }
             .overlay(alignment: .bottomTrailing) { pulseMeter(game: game, size: size) }
     }
@@ -107,19 +111,17 @@ struct GameView: View {
         .accessibilityLabel("Pause")
     }
 
-    private func scoreView(game: Game) -> some View {
+    /// Width-capped so long scores shrink instead of reaching the ring.
+    private func scoreView(game: Game, size: CGSize) -> some View {
         VStack(alignment: .trailing, spacing: 0) {
-            Text("\(game.score)")
-                .font(.title3.monospacedDigit())
-                .foregroundStyle(.white)
-                .accessibilityLabel("Score \(game.score)")
+            HUDLabel(text: "\(game.score)", role: .score, countingValue: Double(game.score),
+                     accessibilityText: "Score \(game.score)")
             if game.multiplier > 1 {
-                Text("x\(game.multiplier)")
-                    .font(.caption2)
-                    .foregroundStyle(Theme.pulse)
-                    .accessibilityLabel("Combo multiplier \(game.multiplier)")
+                HUDLabel(text: "x\(game.multiplier)", role: .caption, color: Theme.pulse,
+                         accessibilityText: "Combo multiplier \(game.multiplier)")
             }
         }
+        .frame(maxWidth: size.width * Theme.hudScoreMaxRatio, alignment: .trailing)
     }
 
     private func livesView(game: Game) -> some View {
@@ -138,24 +140,19 @@ struct GameView: View {
     private func pulseMeter(game: Game, size: CGSize) -> some View {
         let width = size.width * 0.28
         let height = max(4, size.height * 0.025)
-        let fraction = min(CGFloat(game.pulseCharge) / CGFloat(game.tuning.pulseChargeMax), 1)
+        let fraction = min(Double(game.pulseCharge) / Double(game.tuning.pulseChargeMax), 1)
         let label: String = game.isPulseReady
             ? "Pulse ready. Tap the screen to fire."
             : "Pulse charge \(game.pulseCharge) of \(game.tuning.pulseChargeMax)"
         return VStack(alignment: .trailing, spacing: 2) {
             if game.isPulseReady {
-                Text("Tap: Pulse")
-                    .font(.caption2.bold())
-                    .foregroundStyle(Theme.pulse)
+                // Short word so it stays clear of the ring at 40mm; the first-run hint explains the tap.
+                HUDLabel(text: "Pulse", role: .caption, color: Theme.pulse,
+                         accessibilityText: "Pulse ready. Tap the screen to fire.")
+                    .frame(maxWidth: size.width * Theme.hudCornerTextMaxRatio, alignment: .trailing)
             }
-            Capsule()
-                .fill(Theme.ring)
-                .frame(width: width, height: height)
-                .overlay(alignment: .leading) {
-                    Capsule()
-                        .fill(Theme.pulse)
-                        .frame(width: width * fraction, height: height)
-                }
+            HUDBar(fraction: fraction, width: width, height: height, tint: Theme.pulse,
+                   glow: game.isPulseReady, accessibilityText: label)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)

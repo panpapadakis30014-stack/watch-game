@@ -28,6 +28,15 @@ final class AppModel {
 
     var best: Int { keeper.best }
 
+    /// Identifies the current screen kind, for screen transitions.
+    var screenKey: Int {
+        switch screen {
+        case .start: return 0
+        case .playing: return 1
+        case .gameOver: return 2
+        }
+    }
+
     /// Set by the game picker; nil when Ringward runs on its own (screenshot demos).
     var exitToPicker: (@MainActor () -> Void)? = nil
 
@@ -43,12 +52,14 @@ final class AppModel {
         case .midgame?:
             keeper = BestScoreKeeper(store: InMemoryBestScoreStore(initial: 0))
             hasPlayed = false
-            screen = .playing(GameController(
+            let controller = GameController(
                 game: DemoScenario.midGame(),
                 frozen: true,
                 haptics: Haptics(isEnabled: false),
                 onGameOver: { _ in }
-            ))
+            )
+            controller.seedDemoEffects()
+            screen = .playing(controller)
         case nil:
             keeper = BestScoreKeeper(store: UserDefaultsBestScoreStore())
             hasPlayed = UserDefaults.standard.bool(forKey: AppModel.hasPlayedKey)
